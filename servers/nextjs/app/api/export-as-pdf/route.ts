@@ -13,6 +13,19 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  
+  // Get the Next.js server URL from environment variable or construct from request
+  // NEXT_PUBLIC_URL is set by Electron app and includes protocol (e.g., "http://127.0.0.1:40001")
+  let nextjsUrl = process.env.NEXT_PUBLIC_URL;
+  if (!nextjsUrl) {
+    // Fallback: construct from request URL or use default
+    if (req.nextUrl) {
+      nextjsUrl = `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+    } else {
+      nextjsUrl = 'http://localhost:3000';
+    }
+  }
+  
   const browser = await puppeteer.launch({
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
     headless: true,
@@ -34,7 +47,7 @@ export async function POST(req: NextRequest) {
   page.setDefaultNavigationTimeout(300000);
   page.setDefaultTimeout(300000);
 
-  await page.goto(`http://localhost/pdf-maker?id=${id}`, {
+  await page.goto(`${nextjsUrl}/pdf-maker?id=${id}`, {
     waitUntil: "networkidle0",
     timeout: 300000,
   });

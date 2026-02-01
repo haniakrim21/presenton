@@ -18,3 +18,6 @@ chroma
 container.db
 .next-build
 .cursor
+app_dist
+resources/fastapi
+resources/nextjs

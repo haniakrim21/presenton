@@ -26,5 +26,13 @@ dependencies = [
     "sqlmodel>=0.0.24",
 ]
 
+[tool.uv]
+index-strategy = "unsafe-best-match"
+
 [[tool.uv.index]]
 url = "https://download.pytorch.org/whl/cpu"
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.18.0",
+]
