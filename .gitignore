@@ -21,3 +21,4 @@ container.db
 app_dist
 resources/fastapi
 resources/nextjs
+dist

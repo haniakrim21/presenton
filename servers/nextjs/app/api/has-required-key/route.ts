@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   const userConfigPath = process.env.USER_CONFIG_PATH;
 
