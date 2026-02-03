@@ -13,6 +13,7 @@ a = Analysis(
     datas=[
         ('assets', 'assets'),
         ('fastembed_cache', 'fastembed_cache'),
+        ('static', 'static'),
     ] + datas_fastembed + datas_fastembed_vs + datas_onnx,
     hiddenimports=[
         'aiosqlite',

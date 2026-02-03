@@ -5,13 +5,26 @@ export const useAPIKeyCheck = () => {
   const [isRequiredKeyLoading, setIsRequiredKeyLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/has-required-key")
-      .then((res) => res.json())
-      .then((data) => {
+    const checkKey = async () => {
+      try {
+        let data;
+        // Check if running in Electron environment
+        if (typeof window !== 'undefined' && window.electron?.hasRequiredKey) {
+          // Use Electron IPC handler
+          data = await window.electron.hasRequiredKey();
+        } else {
+          // Fallback to API route for web-based deployments
+          const res = await fetch("/api/has-required-key");
+          data = await res.json();
+        }
         setHasRequiredKey(Boolean(data.hasKey));
         setIsRequiredKeyLoading(false);
-      })
-      .catch(() => setIsRequiredKeyLoading(false));
+      } catch {
+        setIsRequiredKeyLoading(false);
+      }
+    };
+    
+    checkKey();
   }, []);
 
   return { hasRequiredKey, isRequiredKeyLoading };

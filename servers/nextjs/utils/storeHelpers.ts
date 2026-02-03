@@ -6,10 +6,18 @@ export const handleSaveLLMConfig = async (llmConfig: LLMConfig) => {
   if (!hasValidLLMConfig(llmConfig)) {
     throw new Error("Provided configuration is not valid");
   }
-  await fetch("/api/user-config", {
-    method: "POST",
-    body: JSON.stringify(llmConfig),
-  });
+  
+  // Check if running in Electron environment
+  if (typeof window !== 'undefined' && window.electron?.setUserConfig) {
+    // Use Electron IPC handler
+    await window.electron.setUserConfig(llmConfig);
+  } else {
+    // Fallback to API route for web-based deployments
+    await fetch("/api/user-config", {
+      method: "POST",
+      body: JSON.stringify(llmConfig),
+    });
+  }
 
   store.dispatch(setLLMConfig(llmConfig));
 };

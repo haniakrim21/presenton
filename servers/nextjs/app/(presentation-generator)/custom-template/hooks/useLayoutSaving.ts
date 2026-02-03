@@ -144,7 +144,7 @@ export const useLayoutSaving = (
       });
 
       const saveResponse = await fetch(
-        "/api/v1/ppt/template-management/save-templates",
+        getApiUrl("/api/v1/ppt/template-management/save-templates"),
         {
           method: "POST",
           headers: {

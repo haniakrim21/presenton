@@ -17,6 +17,7 @@ import * as Recharts from "recharts";
 import * as d3 from 'd3';
 
 import { getHeader } from "../services/api/header";
+import { getApiUrl } from "@/utils/api";
 export interface LayoutInfo {
   id: string;
   name?: string;
@@ -283,16 +284,24 @@ export const LayoutProvider: React.FC<{
       setError(null);
       dispatch(setLayoutLoading(true));
 
-      const templateResponse = await fetch("/api/templates");
+      let templateData: TemplateResponse[];
+      
+      // Check if running in Electron environment
+      if (typeof window !== 'undefined' && window.electron?.getTemplates) {
+        // Use Electron IPC handler - it already returns the correct format
+        templateData = await window.electron.getTemplates();
+      } else {
+        // Fallback to API route for web-based deployments
+        const templateResponse = await fetch("/api/templates");
 
-      if (!templateResponse.ok) {
-        throw new Error(
-          `Failed to fetch layouts: ${templateResponse.statusText}`
-        );
+        if (!templateResponse.ok) {
+          throw new Error(
+            `Failed to fetch layouts: ${templateResponse.statusText}`
+          );
+        }
+
+        templateData = await templateResponse.json();
       }
-
-      const templateData: TemplateResponse[] =
-        await templateResponse.json();
 
       if (!templateData || templateData.length === 0) {
         setError("No template found");
@@ -358,7 +367,7 @@ export const LayoutProvider: React.FC<{
     const fullDataByTemplateID = new Map<string, FullDataInfo[]>();
     try {
       const customTemplateResponse = await fetch(
-        `/api/v1/ppt/template-management/summary`,
+        getApiUrl(`/api/v1/ppt/template-management/summary`),
         {
           headers: {
             ...getHeader(),
@@ -386,7 +395,7 @@ export const LayoutProvider: React.FC<{
         }
         const presentationId = pid;
         const customLayoutResponse = await fetch(
-          `/api/v1/ppt/template-management/get-templates/${presentationId}`,
+          getApiUrl(`/api/v1/ppt/template-management/get-templates/${presentationId}`),
           {
             headers: {
               ...getHeader(),

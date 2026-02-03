@@ -24,4 +24,8 @@ contextBridge.exposeInMainWorld('electron', {
   uploadImage: (file: Buffer) => ipcRenderer.invoke("upload-image", file),
   writeNextjsLog: (logData: string) => ipcRenderer.invoke("write-nextjs-log", logData),
   clearNextjsLogs: () => ipcRenderer.invoke("clear-nextjs-logs"),
+  // API handlers
+  hasRequiredKey: () => ipcRenderer.invoke("api:has-required-key"),
+  telemetryStatus: () => ipcRenderer.invoke("api:telemetry-status"),
+  getTemplates: () => ipcRenderer.invoke("api:templates"),
 });

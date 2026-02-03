@@ -29,6 +29,10 @@ interface ElectronAPI {
   uploadImage: (file: Buffer) => Promise<any>;
   writeNextjsLog: (logData: string) => Promise<any>;
   clearNextjsLogs: () => Promise<any>;
+  // API handlers
+  hasRequiredKey: () => Promise<{ hasKey: boolean }>;
+  telemetryStatus: () => Promise<{ telemetryEnabled: boolean }>;
+  getTemplates: () => Promise<Array<{templateName: string; templateID: string; files: string[]; settings: any }>>;
 }
 
 interface Window {

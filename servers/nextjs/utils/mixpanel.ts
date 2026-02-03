@@ -74,24 +74,27 @@ async function ensureTelemetryStatus(): Promise<boolean> {
     return window.__mixpanel_telemetry_enabled;
   }
   if (!trackingCheckPromise) {
-    trackingCheckPromise = fetch('/api/telemetry-status')
-      .then(async (res) => {
-        try {
-          const data = await res.json();
-          const enabled = Boolean(data?.telemetryEnabled);
-          window.__mixpanel_telemetry_enabled = enabled;
-          return enabled;
-        } catch {
-          // If the API response is malformed, default to enabling tracking
-          window.__mixpanel_telemetry_enabled = true;
-          return true;
+    trackingCheckPromise = (async () => {
+      try {
+        let data;
+        // Check if running in Electron environment
+        if (typeof window !== 'undefined' && window.electron?.telemetryStatus) {
+          // Use Electron IPC handler
+          data = await window.electron.telemetryStatus();
+        } else {
+          // Fallback to API route for web-based deployments
+          const res = await fetch('/api/telemetry-status');
+          data = await res.json();
         }
-      })
-      .catch(() => {
+        const enabled = Boolean(data?.telemetryEnabled);
+        window.__mixpanel_telemetry_enabled = enabled;
+        return enabled;
+      } catch {
         // If the API call fails, default to enabling tracking
         window.__mixpanel_telemetry_enabled = true;
         return true;
-      });
+      }
+    })();
   }
   return trackingCheckPromise;
 }

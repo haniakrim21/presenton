@@ -8,6 +8,7 @@ import Header from "@/app/(presentation-generator)/dashboard/components/Header";
 import { useLayout } from "../context/LayoutContext";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 import { getHeader } from "../services/api/header";
+import { getApiUrl } from "@/utils/api";
 import { toast } from "sonner";
 
 const LayoutPreview = () => {
@@ -38,7 +39,7 @@ const LayoutPreview = () => {
 
   useEffect(() => {
     // Fetch summary to map custom template slug to template meta and last updated time
-    fetch(`/api/v1/ppt/template-management/summary`, {
+    fetch(getApiUrl(`/api/v1/ppt/template-management/summary`), {
       headers: getHeader(),
     })
       .then((res) => res.json())

@@ -37,6 +37,7 @@ import { usePresentationUndoRedo } from "../hooks/PresentationUndoRedo";
 import ToolTip from "@/components/ToolTip";
 import { clearPresentationData } from "@/store/slices/presentationGeneration";
 import { clearHistory } from "@/store/slices/undoRedoSlice";
+import { getApiUrl } from "@/utils/api";
 
 const Header = ({
   presentation_id,
@@ -59,7 +60,7 @@ const Header = ({
   const { onUndo, onRedo, canUndo, canRedo } = usePresentationUndoRedo();
 
   const get_presentation_pptx_model = async (id: string): Promise<PptxPresentationModel> => {
-    const response = await fetch(`/api/presentation_to_pptx_model?id=${id}`);
+    const response = await fetch(getApiUrl(`/api/presentation_to_pptx_model?id=${id}`));
     const pptx_model = await response.json();
     return pptx_model;
   };
