@@ -12,3 +12,31 @@ interface TextFrameProps {
   position: { x: number; y: number };
   // Add other properties as needed
 }
+
+// Electron IPC types
+interface ElectronAPI {
+  fileDownloaded: (filePath: string) => Promise<any>;
+  exportAsPDF: (id: string, title: string) => Promise<any>;
+  getUserConfig: () => Promise<any>;
+  setUserConfig: (userConfig: any) => Promise<any>;
+  getCanChangeKeys: () => Promise<boolean>;
+  readFile: (filePath: string) => Promise<string>;
+  getSlideMetadata: (url: string, theme: string, customColors?: any, tempDirectory?: string) => Promise<any>;
+  getFooter: (userId: string) => Promise<any>;
+  setFooter: (userId: string, properties: any) => Promise<any>;
+  getTheme: (userId: string) => Promise<any>;
+  setTheme: (userId: string, themeData: any) => Promise<any>;
+  uploadImage: (file: Buffer) => Promise<any>;
+  writeNextjsLog: (logData: string) => Promise<any>;
+  clearNextjsLogs: () => Promise<any>;
+}
+
+interface Window {
+  electron?: ElectronAPI;
+  env?: {
+    NEXT_PUBLIC_FAST_API: string;
+    NEXT_PUBLIC_URL: string;
+    TEMP_DIRECTORY: string;
+    NEXT_PUBLIC_USER_CONFIG_PATH: string;
+  };
+}

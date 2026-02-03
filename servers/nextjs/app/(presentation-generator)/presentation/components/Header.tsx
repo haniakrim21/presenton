@@ -109,20 +109,33 @@ const Header = ({
       await PresentationGenerationApi.updatePresentationContent(presentationData);
 
       trackEvent(MixpanelEvent.Header_ExportAsPDF_API_Call);
-      const response = await fetch('/api/export-as-pdf', {
-        method: 'POST',
-        body: JSON.stringify({
-          id: presentation_id,
-          title: presentationData?.title,
-        })
-      });
-
-      if (response.ok) {
-        const { path: pdfPath } = await response.json();
-        // window.open(pdfPath, '_blank');
-        downloadLink(pdfPath);
+      
+      // Check if running in Electron environment
+      if (typeof window !== 'undefined' && window.electron?.exportAsPDF) {
+        // Use Electron IPC handler
+        const result = await window.electron.exportAsPDF(presentation_id, presentationData?.title || 'presentation');
+        if (result.success) {
+          toast.success("PDF exported successfully!");
+        } else {
+          throw new Error("Failed to export PDF");
+        }
       } else {
-        throw new Error("Failed to export PDF");
+        // Fallback to API route for web-based deployments
+        const response = await fetch('/api/export-as-pdf', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: presentation_id,
+            title: presentationData?.title,
+          })
+        });
+
+        if (response.ok) {
+          const { path: pdfPath } = await response.json();
+          // window.open(pdfPath, '_blank');
+          downloadLink(pdfPath);
+        } else {
+          throw new Error("Failed to export PDF");
+        }
       }
 
     } catch (err) {

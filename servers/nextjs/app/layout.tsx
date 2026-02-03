@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Roboto, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import MixpanelInitializer from "./MixpanelInitializer";
@@ -17,15 +16,25 @@ const inter = localFont({
   variable: "--font-inter",
 });
 
-const instrument_sans = Instrument_Sans({
-  subsets: ["latin"],
-  weight: ["400"],
+const instrument_sans = localFont({
+  src: [
+    {
+      path: "./fonts/Inter.ttf",
+      weight: "400",
+      style: "normal",
+    },
+  ],
   variable: "--font-instrument-sans",
 });
 
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["400"],
+const roboto = localFont({
+  src: [
+    {
+      path: "./fonts/Inter.ttf",
+      weight: "400",
+      style: "normal",
+    },
+  ],
   variable: "--font-roboto",
 });
 

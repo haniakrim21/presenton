@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { checkIfSelectedOllamaModelIsPulled } from '@/utils/providerUtils';
 import { LLMConfig } from '@/types/llm_config';
+import { getApiUrl } from '@/utils/api';
 
 export function ConfigurationInitializer({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
@@ -31,13 +32,17 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
 
   const fetchUserConfigState = async () => {
     setIsLoading(true);
-    const response = await fetch('/api/can-change-keys');
-    const canChangeKeys = (await response.json()).canChange;
+    
+    // Use Electron IPC directly instead of API routes (which don't work in production)
+    const canChangeKeys = typeof window !== 'undefined' && (window as any).electron 
+      ? await (window as any).electron.getCanChangeKeys()
+      : false;
     dispatch(setCanChangeKeys(canChangeKeys));
 
     if (canChangeKeys) {
-      const response = await fetch('/api/user-config');
-      const llmConfig = await response.json();
+      const llmConfig = typeof window !== 'undefined' && (window as any).electron 
+        ? await (window as any).electron.getUserConfig()
+        : {};
       if (!llmConfig.LLM) {
         llmConfig.LLM = 'openai';
       }
@@ -86,7 +91,7 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
 
   const checkIfSelectedCustomModelIsAvailable = async (llmConfig: LLMConfig) => {
     try {
-      const response = await fetch('/api/v1/ppt/openai/models/available', {
+      const response = await fetch(getApiUrl('api/v1/ppt/openai/models/available'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,6 +101,12 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
           api_key: llmConfig.CUSTOM_LLM_API_KEY,
         }),
       });
+      
+      if (!response.ok) {
+        console.error('Custom model check failed with status:', response.status);
+        return false;
+      }
+      
       const data = await response.json();
       return data.includes(llmConfig.CUSTOM_MODEL);
     } catch (error) {

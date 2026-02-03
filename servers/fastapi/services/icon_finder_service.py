@@ -7,26 +7,43 @@ from fastembed_vectorstore import FastembedEmbeddingModel, FastembedVectorstore
 class IconFinderService:
     def __init__(self):
         self.model = FastembedEmbeddingModel.AllMiniLML6V2
-        self.cache_directory = "fastembed_cache"
+        # Use absolute path to ensure it works in packaged environments
+        self.cache_directory = os.path.abspath("fastembed_cache")
         self.vectorstore = None
         self._initialized = False
+        self._initialization_failed = False
 
     def _initialize_icons_collection(self):
-        if self._initialized:
+        if self._initialized or self._initialization_failed:
             return
+        
+        # Mark as initialized immediately to prevent repeated attempts
+        self._initialized = True
             
         print("Initializing icons collection...")
+        
+        # Ensure cache directory exists
         try:
-            icons_vectorstore_path = "assets/icons-vectorstore.json"
+            os.makedirs(self.cache_directory, exist_ok=True)
+        except Exception as e:
+            print(f"Warning: Could not create cache directory: {e}")
+            self._initialization_failed = True
+            return
+            
+        try:
+            icons_vectorstore_path = os.path.abspath("assets/icons-vectorstore.json")
+            icons_path = os.path.abspath("assets/icons.json")
+            
             if os.path.exists(icons_vectorstore_path):
+                print(f"Loading existing vectorstore from {icons_vectorstore_path}")
                 self.vectorstore = FastembedVectorstore.load(
                     self.model, icons_vectorstore_path, cache_directory=self.cache_directory
                 )
-            else:
+            elif os.path.exists(icons_path):
+                print(f"Creating new vectorstore from {icons_path}")
                 self.vectorstore = FastembedVectorstore(
                     self.model, cache_directory=self.cache_directory
                 )
-                icons_path = "assets/icons.json"
                 with open(icons_path, "r") as f:
                     icons = json.load(f)
 
@@ -44,18 +61,24 @@ class IconFinderService:
                         self.vectorstore.save(icons_vectorstore_path)
                     else:
                         print(f"Failed to embed {len(documents)} icons")
+                        self._initialization_failed = True
+            else:
+                print(f"Warning: Icons assets not found at {icons_path}")
+                self._initialization_failed = True
             
-            self._initialized = True
-            print("Icons collection initialized.")
+            print("Icons collection initialized successfully.")
         except Exception as e:
             print(f"Warning: Could not initialize icon finder service: {e}")
+            print(f"Error type: {type(e).__name__}")
             print("Icon search will be disabled.")
+            self._initialization_failed = True
+            # Keep vectorstore as None so search_icons returns empty results
 
     async def search_icons(self, query: str, k: int = 1):
-        if not self._initialized:
+        if not self._initialized and not self._initialization_failed:
             self._initialize_icons_collection()
         
-        if not self.vectorstore:
+        if not self.vectorstore or self._initialization_failed:
             # Return empty list if vectorstore failed to initialize
             return []
             

@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electron', {
   exportAsPDF: (id: string, title: string) => ipcRenderer.invoke("export-as-pdf", id, title),
   getUserConfig: () => ipcRenderer.invoke("get-user-config"),
   setUserConfig: (userConfig: UserConfig) => ipcRenderer.invoke("set-user-config", userConfig),
+  getCanChangeKeys: () => ipcRenderer.invoke("get-can-change-keys"),
   readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
   getSlideMetadata: (url: string, theme: string, customColors?: any, tempDirectory?: string) =>
     ipcRenderer.invoke("get-slide-metadata", url, theme, customColors, tempDirectory),

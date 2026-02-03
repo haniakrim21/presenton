@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { ApiResponseHandler } from "@/app/(presentation-generator)/services/api/api-error-handler";
 import { ProcessedSlide, UploadedFont, FontData } from "../types";
+import { getApiUrl } from "@/utils/api";
 
 export const useLayoutSaving = (
   slides: ProcessedSlide[],
@@ -35,7 +36,7 @@ export const useLayoutSaving = (
 
     while (retryCount < maxRetries) {
       try {
-        const response = await fetch("/api/v1/ppt/html-to-react/", {
+        const response = await fetch(getApiUrl("api/v1/ppt/html-to-react/"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -136,7 +137,7 @@ export const useLayoutSaving = (
       }
 
       // First create/update the template metadata
-      await fetch("/api/v1/ppt/template-management/templates", {
+      await fetch(getApiUrl("api/v1/ppt/template-management/templates"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: presentationId, name: layoutName, description }),
