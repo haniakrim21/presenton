@@ -6,21 +6,24 @@ datas_fastembed, binaries_fastembed, hiddenimports_fastembed = collect_all('fast
 datas_fastembed_vs, binaries_fastembed_vs, hiddenimports_fastembed_vs = collect_all('fastembed_vectorstore')
 datas_onnx, binaries_onnx, hiddenimports_onnx = collect_all('onnxruntime')
 
+# Collect python-pptx templates and data files
+datas_pptx, binaries_pptx, hiddenimports_pptx = collect_all('pptx')
+
 a = Analysis(
     ['server.py'],
     pathex=[],
-    binaries=binaries_fastembed + binaries_fastembed_vs + binaries_onnx,
+    binaries=binaries_fastembed + binaries_fastembed_vs + binaries_onnx + binaries_pptx,
     datas=[
         ('assets', 'assets'),
         ('fastembed_cache', 'fastembed_cache'),
         ('static', 'static'),
-    ] + datas_fastembed + datas_fastembed_vs + datas_onnx,
+    ] + datas_fastembed + datas_fastembed_vs + datas_onnx + datas_pptx,
     hiddenimports=[
         'aiosqlite',
         'sqlite3',
         'numpy',
         'pandas',
-    ] + hiddenimports_fastembed + hiddenimports_fastembed_vs + hiddenimports_onnx,
+    ] + hiddenimports_fastembed + hiddenimports_fastembed_vs + hiddenimports_onnx + hiddenimports_pptx,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -101,14 +101,19 @@ class PptxPresentationCreator:
                 if isinstance(each_shape, PptxPictureBoxModel):
                     image_path = each_shape.picture.path
                     
+                    print(f"[PPTX] Processing image path: {image_path}")
+                    
                     # Handle file:// URLs by converting to local path
                     if image_path.startswith("file://"):
+                        original_path = image_path
                         image_path = image_path.replace("file:///", "")
                         # Check if it's a Windows path (has colon at index 1)
                         if not (len(image_path) > 1 and image_path[1] == ':'):
                             image_path = '/' + image_path
                         each_shape.picture.path = image_path
                         each_shape.picture.is_network = False
+                        print(f"[PPTX] Converted file:// URL: {original_path} -> {image_path}")
+                        print(f"[PPTX] File exists after conversion: {os.path.exists(image_path)}")
                         continue
                     
                     if image_path.startswith("http"):
@@ -164,6 +169,8 @@ class PptxPresentationCreator:
 
     def add_and_populate_slide(self, slide_model: PptxSlideModel):
         slide = self._ppt.slides.add_slide(self._ppt.slide_layouts[BLANK_SLIDE_LAYOUT])
+        
+        print(f"[PPTX] Adding slide with {len(slide_model.shapes)} shapes")
 
         if slide_model.background:
             self.apply_fill_to_shape(slide.background, slide_model.background)
@@ -173,6 +180,8 @@ class PptxPresentationCreator:
 
         for shape_model in slide_model.shapes:
             model_type = type(shape_model)
+            
+            print(f"[PPTX] Processing shape type: {model_type.__name__}")
 
             if model_type is PptxPictureBoxModel:
                 self.add_picture(slide, shape_model)
@@ -198,6 +207,10 @@ class PptxPresentationCreator:
 
     def add_picture(self, slide: Slide, picture_model: PptxPictureBoxModel):
         image_path = picture_model.picture.path
+        
+        print(f"[PPTX] Adding picture: {image_path}")
+        print(f"[PPTX] File exists: {os.path.exists(image_path)}")
+        
         if (
             picture_model.clip
             or picture_model.border_radius
@@ -208,8 +221,9 @@ class PptxPresentationCreator:
         ):
             try:
                 image = Image.open(image_path)
-            except Exception:
-                print(f"Could not open image: {image_path}")
+            except Exception as e:
+                print(f"[PPTX] ERROR: Could not open image: {image_path}")
+                print(f"[PPTX] ERROR: Exception: {e}")
                 return
 
             image = image.convert("RGBA")
@@ -244,7 +258,13 @@ class PptxPresentationCreator:
             picture_model.position, picture_model.margin
         )
 
-        slide.shapes.add_picture(image_path, *margined_position.to_pt_list())
+        try:
+            slide.shapes.add_picture(image_path, *margined_position.to_pt_list())
+            print(f"[PPTX] Successfully added picture to slide")
+        except Exception as e:
+            print(f"[PPTX] ERROR: Failed to add picture to slide: {e}")
+            print(f"[PPTX] ERROR: Image path: {image_path}")
+            print(f"[PPTX] ERROR: File exists: {os.path.exists(image_path)}")
 
     def add_autoshape(self, slide: Slide, autoshape_box_model: PptxAutoShapeBoxModel):
         position = autoshape_box_model.position
