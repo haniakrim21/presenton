@@ -85,9 +85,12 @@ interface SlideAttributesResult {
 }
 
 interface PptxSlide {
-  elements: any[];
-  backgroundColor?: string;
-  speakerNote?: string;
+  shapes: any[];
+  background?: {
+    color: string;
+    opacity?: number;
+  };
+  note?: string;
 }
 
 interface PptxPresentationModel {
@@ -1529,13 +1532,15 @@ async function screenshotElement(
 function convertElementAttributesToPptxSlides(
   slidesAttributes: SlideAttributesResult[]
 ): PptxSlide[] {
-  // This is a placeholder - you'll need to implement the actual conversion logic
-  // based on your PPTX model requirements
+  // Convert slide attributes to PPTX model format expected by FastAPI
   return slidesAttributes.map((slide) => ({
-    elements: slide.elements.map((element) => ({
+    shapes: slide.elements.map((element) => ({
       ...element,
     })),
-    backgroundColor: slide.backgroundColor,
-    speakerNote: slide.speakerNote,
+    background: slide.backgroundColor ? {
+      color: slide.backgroundColor,
+      opacity: 1.0
+    } : undefined,
+    note: slide.speakerNote,
   }));
 }
