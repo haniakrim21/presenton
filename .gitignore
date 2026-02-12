@@ -22,3 +22,4 @@ app_dist
 resources/fastapi
 resources/nextjs
 dist
+servers/fastapi/fastembed_cache/

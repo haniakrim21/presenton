@@ -10,6 +10,7 @@ services:
     volumes:
       - ./app_data:/app_data
     environment:
+      - APP_DATA_DIRECTORY=/app_data
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -51,6 +52,7 @@ services:
     volumes:
       - ./app_data:/app_data
     environment:
+      - APP_DATA_DIRECTORY=/app_data
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -84,6 +86,7 @@ services:
       - .:/app
       - ./app_data:/app_data
     environment:
+      - APP_DATA_DIRECTORY=/app_data
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -124,6 +127,7 @@ services:
       - .:/app
       - ./app_data:/app_data
     environment:
+      - APP_DATA_DIRECTORY=/app_data
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
       - OPENAI_API_KEY=${OPENAI_API_KEY}

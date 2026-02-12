@@ -3,7 +3,6 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "./providers";
 import MixpanelInitializer from "./MixpanelInitializer";
-import { LayoutProvider } from "./(presentation-generator)/context/LayoutContext";
 import { Toaster } from "@/components/ui/sonner";
 const inter = localFont({
   src: [
@@ -96,9 +95,9 @@ export default function RootLayout({
       >
         <Providers>
           <MixpanelInitializer>
-            <LayoutProvider>
-              {children}
-            </LayoutProvider>
+
+            {children}
+
           </MixpanelInitializer>
         </Providers>
         <Toaster position="top-center" />

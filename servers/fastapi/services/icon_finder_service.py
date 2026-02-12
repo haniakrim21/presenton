@@ -43,16 +43,17 @@ class IconFinderService:
             print(f"[IconFinder] Writable vectorstore path: {writable_vectorstore_path}")
             print(f"[IconFinder] Icons.json path: {icons_path}")
             print(f"[IconFinder] Cache directory: {self.cache_directory}")
-            print(f"[IconFinder] Bundled vectorstore exists: {os.path.exists(bundled_vectorstore_path)}")
-            print(f"[IconFinder] Writable vectorstore exists: {os.path.exists(writable_vectorstore_path)}")
-            print(f"[IconFinder] Icons.json exists: {os.path.exists(icons_path)}")
+            print(f"[IconFinder] Bundled vectorstore exists: {os.path.isfile(bundled_vectorstore_path)}")
+            print(f"[IconFinder] Writable vectorstore exists: {os.path.isfile(writable_vectorstore_path)}")
+            print(f"[IconFinder] Icons.json exists: {os.path.isfile(icons_path)}")
             
             # Try to load from bundled location first, then writable location
+            # Use os.path.isfile() instead of os.path.exists() to avoid loading directories
             vectorstore_path = None
-            if os.path.exists(bundled_vectorstore_path):
+            if os.path.isfile(bundled_vectorstore_path):
                 vectorstore_path = bundled_vectorstore_path
                 print(f"[IconFinder] Loading vectorstore from bundled location: {vectorstore_path}")
-            elif os.path.exists(writable_vectorstore_path):
+            elif os.path.isfile(writable_vectorstore_path):
                 vectorstore_path = writable_vectorstore_path
                 print(f"[IconFinder] Loading vectorstore from writable location: {vectorstore_path}")
             
@@ -61,7 +62,7 @@ class IconFinderService:
                     self.model, vectorstore_path, cache_directory=self.cache_directory
                 )
                 print("[IconFinder] Vectorstore loaded successfully")
-            elif os.path.exists(icons_path):
+            elif os.path.isfile(icons_path):
                 print(f"[IconFinder] Creating new vectorstore from {icons_path}")
                 self.vectorstore = FastembedVectorstore(
                     self.model, cache_directory=self.cache_directory

@@ -18,12 +18,10 @@ export async function POST(req: NextRequest) {
   // NEXT_PUBLIC_URL is set by Electron app and includes protocol (e.g., "http://127.0.0.1:40001")
   let nextjsUrl = process.env.NEXT_PUBLIC_URL;
   if (!nextjsUrl) {
-    // Fallback: construct from request URL or use default
-    if (req.nextUrl) {
-      nextjsUrl = `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-    } else {
-      nextjsUrl = 'http://localhost:3000';
-    }
+    // In Docker environment, use localhost (goes through nginx on port 80)
+    // This ensures API calls from the page use window.location.origin = http://localhost
+    // which routes /api/v1/ through nginx to FastAPI correctly
+    nextjsUrl = 'http://localhost';
   }
   
   const browser = await puppeteer.launch({

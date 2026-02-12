@@ -165,24 +165,44 @@ const startServers = async () => {
     console.error("Next.js process failed to start:", err);
   });
 
-  const ollamaProcess = spawn("ollama", ["serve"], {
-    cwd: "/",
-    stdio: "inherit",
-    env: process.env,
-  });
+  // Try to start Ollama if available (optional)
+  let ollamaProcess = null;
+  try {
+    ollamaProcess = spawn("ollama", ["serve"], {
+      cwd: "/",
+      stdio: "ignore", // Ignore stdio to prevent errors if ollama is not installed
+      env: process.env,
+    });
 
-  ollamaProcess.on("error", (err) => {
-    console.error("Ollama process failed to start:", err);
-  });
+    ollamaProcess.on("error", (err) => {
+      console.log("Ollama not available (this is optional):", err.message);
+      ollamaProcess = null;
+    });
 
-  // Keep the Node process alive until both servers exit
+    ollamaProcess.on("exit", (code) => {
+      console.log(`Ollama process exited with code: ${code}`);
+      ollamaProcess = null;
+    });
+  } catch (err) {
+    console.log("Ollama not available (this is optional)");
+    ollamaProcess = null;
+  }
+
+  // Keep the Node process alive until critical servers exit
+  // Only wait for FastAPI and Next.js (not Ollama, as it's optional)
   const exitCode = await Promise.race([
     new Promise((resolve) => fastApiProcess.on("exit", resolve)),
     new Promise((resolve) => nextjsProcess.on("exit", resolve)),
-    new Promise((resolve) => ollamaProcess.on("exit", resolve)),
   ]);
 
-  console.log(`One of the processes exited. Exit code: ${exitCode}`);
+  console.log(`One of the critical processes exited. Exit code: ${exitCode}`);
+  
+  // Clean up all processes
+  if (ollamaProcess) {
+    ollamaProcess.kill();
+  }
+  appmcpProcess.kill();
+  
   process.exit(exitCode);
 };
 
