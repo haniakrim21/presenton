@@ -28,6 +28,7 @@ OPENAI_TOKEN_URL = "https://auth.openai.com/oauth/token"
 OPENAI_OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 OPENAI_OAUTH_SCOPE = "openid profile email offline_access"
 OAUTH_CALLBACK_PORT = 1455
+# MUST be localhost:1455 - this is registered with OpenAI's OAuth client
 OAUTH_REDIRECT_URI = f"http://localhost:{OAUTH_CALLBACK_PORT}/auth/callback"
 
 # ChatGPT API

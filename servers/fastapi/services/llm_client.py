@@ -40,12 +40,15 @@ from models.llm_tool_call import (
 )
 from models.llm_tools import LLMDynamicTool, LLMTool
 from services.llm_tool_calls_handler import LLMToolCallsHandler
+from services.piapi_codex_client import PiAICodexClient
 from utils.async_iterator import iterator_to_async
 from utils.dummy_functions import do_nothing_async
 from utils.get_env import (
     get_anthropic_api_key_env,
     get_chatgpt_access_token_env,
     get_chatgpt_account_id_env,
+    get_chatgpt_refresh_token_env,
+    get_chatgpt_token_expires_at_env,
     get_custom_llm_api_key_env,
     get_custom_llm_url_env,
     get_disable_thinking_env,
@@ -69,6 +72,104 @@ class LLMClient:
         self.llm_provider = get_llm_provider()
         self._client = self._get_client()
         self.tool_calls_handler = LLMToolCallsHandler(self)
+        self._chatgpt_token_refreshed = False  # Track if we've already tried refreshing
+        self._piapi_client = PiAICodexClient()  # pi-ai codex client
+
+    async def _ensure_chatgpt_token_valid(self):
+        """Check and refresh ChatGPT token if needed."""
+        if self.llm_provider != LLMProvider.OPENAI_CHATGPT:
+            return
+        
+        import time
+        import json
+        import os
+        from services.chatgpt_oauth import refresh_access_token
+        from utils.get_env import get_user_config_path_env
+        from utils.set_env import (
+            set_chatgpt_access_token_env,
+            set_chatgpt_refresh_token_env,
+            set_chatgpt_token_expires_at_env,
+            set_chatgpt_account_id_env,
+        )
+        
+        refresh_token = get_chatgpt_refresh_token_env()
+        token_expires_at_str = get_chatgpt_token_expires_at_env()
+        
+        print(f"[Token Check] Refresh token exists: {bool(refresh_token)}")
+        print(f"[Token Check] Expires at: {token_expires_at_str}")
+        
+        if not refresh_token:
+            print("[Token Check] No refresh token available, skipping refresh")
+            return
+        
+        # Check if token is expired or about to expire (within 5 minutes)
+        token_expired = False
+        if token_expires_at_str:
+            try:
+                token_expires_at = float(token_expires_at_str)
+                current_time = time.time()
+                time_until_expiry = token_expires_at - current_time
+                print(f"[Token Check] Current time: {current_time}")
+                print(f"[Token Check] Time until expiry: {time_until_expiry} seconds")
+                # Refresh if expired or expiring within 5 minutes
+                if time.time() >= (token_expires_at - 300):
+                    token_expired = True
+                    print(f"[Token Check] Token is expired or expiring soon")
+            except (ValueError, TypeError) as e:
+                print(f"[Token Check] Error parsing expiry time: {e}")
+                pass
+        
+        # Refresh token if expired
+        if token_expired and not self._chatgpt_token_refreshed:
+            print("[Token Check] Attempting to refresh token...")
+            try:
+                # Refresh the token
+                credential = await refresh_access_token(refresh_token)
+                print("[Token Check] Token refresh successful")
+                
+                # Update environment variables
+                set_chatgpt_access_token_env(credential.access_token)
+                set_chatgpt_refresh_token_env(credential.refresh_token)
+                set_chatgpt_token_expires_at_env(str(credential.expires_at))
+                if credential.account_id:
+                    set_chatgpt_account_id_env(credential.account_id)
+                
+                # Save to user config file (preserve existing config)
+                user_config_path = get_user_config_path_env()
+                if user_config_path:
+                    existing_config = {}
+                    try:
+                        if os.path.exists(user_config_path):
+                            with open(user_config_path, "r") as f:
+                                existing_config = json.load(f)
+                    except Exception:
+                        pass
+
+                    existing_config["CHATGPT_ACCESS_TOKEN"] = credential.access_token
+                    existing_config["CHATGPT_REFRESH_TOKEN"] = credential.refresh_token
+                    existing_config["CHATGPT_TOKEN_EXPIRES_AT"] = credential.expires_at
+                    existing_config["CHATGPT_ACCOUNT_ID"] = credential.account_id
+
+                    try:
+                        with open(user_config_path, "w") as f:
+                            json.dump(existing_config, f)
+                        print("[Token Check] Config file updated successfully")
+                    except Exception as e:
+                        print(f"Failed to save ChatGPT credential: {e}")
+                
+                # Recreate the client with new token
+                self._client = self._get_chatgpt_client()
+                self._chatgpt_token_refreshed = True
+                print("[Token Check] Client recreated with new token")
+                
+            except Exception as e:
+                print(f"Warning: Failed to refresh ChatGPT token: {e}")
+                raise HTTPException(
+                    status_code=401,
+                    detail=f"ChatGPT token expired and refresh failed: {str(e)}. Please login again.",
+                )
+        else:
+            print(f"[Token Check] Token is valid, no refresh needed (expired={token_expired}, already_refreshed={self._chatgpt_token_refreshed})")
 
     # ? Use tool calls
     def use_tool_calls_for_structured_output(self) -> bool:
@@ -1616,7 +1717,7 @@ class LLMClient:
                     max_tokens=max_tokens,
                 )
             case LLMProvider.OPENAI_CHATGPT:
-                return self._stream_openai_structured(
+                return self._stream_chatgpt_structured_with_refresh(
                     model=model,
                     messages=messages,
                     response_format=response_format,
@@ -1624,6 +1725,45 @@ class LLMClient:
                     tools=parsed_tools,
                     max_tokens=max_tokens,
                 )
+    
+    async def _stream_chatgpt_structured_with_refresh(
+        self,
+        model: str,
+        messages: List[LLMMessage],
+        response_format: dict,
+        strict: bool = False,
+        tools: Optional[List[dict]] = None,
+        max_tokens: Optional[int] = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream structured output from Codex using pi-ai."""
+        print(f"[PiAI] Starting Codex streaming with model: {model}")
+        
+        # Convert LLMMessage to dict format for pi-ai
+        pi_messages = []
+        for msg in messages:
+            if isinstance(msg, LLMSystemMessage):
+                pi_messages.append({"role": "system", "content": msg.content})
+            elif isinstance(msg, LLMUserMessage):
+                pi_messages.append({"role": "user", "content": msg.content})
+            else:
+                # Handle other message types
+                content = getattr(msg, 'content', '')
+                role = getattr(msg, 'role', 'user')
+                pi_messages.append({"role": role, "content": content})
+        
+        print(f"[PiAI] Converted {len(pi_messages)} messages")
+        
+        try:
+            async for chunk in self._piapi_client.stream_completion(
+                model=model,
+                messages=pi_messages,
+                response_format=response_format if not strict else None,
+                max_tokens=max_tokens,
+            ):
+                yield chunk
+        except Exception as e:
+            print(f"[PiAI] Error during streaming: {e}")
+            raise
 
     # ? Web search
     async def _search_openai(self, query: str) -> str:

@@ -37,13 +37,22 @@ WORKDIR /app/servers/nextjs
 COPY servers/nextjs/package.json servers/nextjs/package-lock.json ./
 RUN npm install
 
-
 # Copy Next.js app
 COPY servers/nextjs/ /app/servers/nextjs/
 
 # Build the Next.js app
 WORKDIR /app/servers/nextjs
 RUN npm run build
+
+# Install dependencies for OAuth service
+WORKDIR /app/servers/oauth-service
+COPY servers/oauth-service/package.json ./
+COPY servers/oauth-service/package-lock.json* ./
+COPY servers/oauth-service/patches/ ./patches/
+RUN npm install
+
+# Copy OAuth service
+COPY servers/oauth-service/ /app/servers/oauth-service/
 
 WORKDIR /app
 

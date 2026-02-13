@@ -208,7 +208,15 @@ async def chatgpt_callback_redirect(request: Request, code: str = Query(...), st
 
 
 def _save_chatgpt_credential(credential: ChatGPTCredential):
-    """Save ChatGPT credential into the user config JSON file."""
+    """Save ChatGPT credential into the user config JSON file and update environment variables."""
+    from utils.set_env import (
+        set_chatgpt_access_token_env,
+        set_chatgpt_refresh_token_env,
+        set_chatgpt_token_expires_at_env,
+        set_chatgpt_account_id_env,
+        set_llm_provider_env,
+    )
+    
     user_config_path = get_user_config_path_env()
     if not user_config_path:
         return
@@ -225,9 +233,22 @@ def _save_chatgpt_credential(credential: ChatGPTCredential):
     existing_config["CHATGPT_REFRESH_TOKEN"] = credential.refresh_token
     existing_config["CHATGPT_TOKEN_EXPIRES_AT"] = credential.expires_at
     existing_config["CHATGPT_ACCOUNT_ID"] = credential.account_id
+    # Also set LLM provider to openai-chatgpt if not already set
+    if "LLM" not in existing_config or not existing_config["LLM"]:
+        existing_config["LLM"] = "openai-chatgpt"
 
     try:
         with open(user_config_path, "w") as f:
             json.dump(existing_config, f)
     except Exception as e:
         print(f"Failed to save ChatGPT credential: {e}")
+    
+    # Also update environment variables immediately so they're available for the current session
+    set_chatgpt_access_token_env(credential.access_token)
+    set_chatgpt_refresh_token_env(credential.refresh_token)
+    set_chatgpt_token_expires_at_env(str(credential.expires_at))
+    if credential.account_id:
+        set_chatgpt_account_id_env(credential.account_id)
+    
+    # Set LLM provider to openai-chatgpt
+    set_llm_provider_env("openai-chatgpt")

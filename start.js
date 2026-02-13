@@ -10,6 +10,7 @@ const __dirname = dirname(__filename);
 
 const fastapiDir = join(__dirname, "servers/fastapi");
 const nextjsDir = join(__dirname, "servers/nextjs");
+const oauthServiceDir = join(__dirname, "servers/oauth-service");
 
 const args = process.argv.slice(2);
 const hasDevArg = args.includes("--dev") || args.includes("-d");
@@ -19,6 +20,7 @@ const canChangeKeys = process.env.CAN_CHANGE_KEYS !== "false";
 const fastapiPort = 8000;
 const nextjsPort = 3000;
 const appmcpPort = 8001;
+const oauthServicePort = 1456; // OAuth API port (pi-ai uses 1455 for callbacks)
 
 const userConfigPath = join(process.env.APP_DATA_DIRECTORY, "userConfig.json");
 const userDataDir = dirname(userConfigPath);
@@ -29,8 +31,9 @@ if (!existsSync(userDataDir)) {
 }
 
 // Setup node_modules for development
-const setupNodeModules = () => {
-  return new Promise((resolve, reject) => {
+const setupNodeModules = async () => {
+  // Install Next.js dependencies
+  await new Promise((resolve, reject) => {
     console.log("Setting up node_modules for Next.js...");
     const npmProcess = spawn("npm", ["install"], {
       cwd: nextjsDir,
@@ -39,17 +42,42 @@ const setupNodeModules = () => {
     });
 
     npmProcess.on("error", (err) => {
-      console.error("npm install failed:", err);
+      console.error("Next.js npm install failed:", err);
       reject(err);
     });
 
     npmProcess.on("exit", (code) => {
       if (code === 0) {
-        console.log("npm install completed successfully");
+        console.log("Next.js npm install completed successfully");
         resolve();
       } else {
-        console.error(`npm install failed with exit code: ${code}`);
-        reject(new Error(`npm install failed with exit code: ${code}`));
+        console.error(`Next.js npm install failed with exit code: ${code}`);
+        reject(new Error(`Next.js npm install failed with exit code: ${code}`));
+      }
+    });
+  });
+
+  // Install OAuth service dependencies
+  await new Promise((resolve, reject) => {
+    console.log("Setting up node_modules for OAuth service...");
+    const npmProcess = spawn("npm", ["install"], {
+      cwd: oauthServiceDir,
+      stdio: "inherit",
+      env: process.env,
+    });
+
+    npmProcess.on("error", (err) => {
+      console.error("OAuth service npm install failed:", err);
+      reject(err);
+    });
+
+    npmProcess.on("exit", (code) => {
+      if (code === 0) {
+        console.log("OAuth service npm install completed successfully");
+        resolve();
+      } else {
+        console.error(`OAuth service npm install failed with exit code: ${code}`);
+        reject(new Error(`OAuth service npm install failed with exit code: ${code}`));
       }
     });
   });
@@ -65,7 +93,8 @@ const setupUserConfigFromEnv = () => {
     existingConfig = JSON.parse(readFileSync(userConfigPath, "utf8"));
   }
 
-  if (!["ollama", "openai", "google"].includes(existingConfig.LLM)) {
+  // Validate LLM provider - include openai-chatgpt (Codex OAuth)
+  if (!["ollama", "openai", "google", "anthropic", "custom", "openai-chatgpt"].includes(existingConfig.LLM)) {
     existingConfig.LLM = undefined;
   }
 
@@ -103,6 +132,12 @@ const setupUserConfigFromEnv = () => {
       process.env.DALL_E_3_QUALITY || existingConfig.DALL_E_3_QUALITY,
     GPT_IMAGE_1_5_QUALITY:
       process.env.GPT_IMAGE_1_5_QUALITY || existingConfig.GPT_IMAGE_1_5_QUALITY,
+    // Preserve ChatGPT OAuth credentials (managed by oauth-service)
+    CHATGPT_ACCESS_TOKEN: existingConfig.CHATGPT_ACCESS_TOKEN,
+    CHATGPT_REFRESH_TOKEN: existingConfig.CHATGPT_REFRESH_TOKEN,
+    CHATGPT_TOKEN_EXPIRES_AT: existingConfig.CHATGPT_TOKEN_EXPIRES_AT,
+    CHATGPT_ACCOUNT_ID: existingConfig.CHATGPT_ACCOUNT_ID,
+    CHATGPT_MODEL: existingConfig.CHATGPT_MODEL,
   };
 
   writeFileSync(userConfigPath, JSON.stringify(userConfig));
@@ -143,109 +178,24 @@ const startServers = async () => {
     console.error("App MCP process failed to start:", err);
   });
 
-  // Start OAuth callback server for ChatGPT auth
-  const oauthCallbackProcess = spawn(
-    "python",
-    ["-c", `
-import http.server
-import socketserver
-import urllib.parse
-import json
-import requests
-from urllib.parse import parse_qs
-
-class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path.startswith('/auth/callback'):
-            # Parse query parameters
-            parsed = urllib.parse.urlparse(self.path)
-            query_params = parse_qs(parsed.query)
-            
-            code = query_params.get('code', [None])[0]
-            state = query_params.get('state', [None])[0] 
-            error = query_params.get('error', [None])[0]
-            
-            if error:
-                self.send_response(400)
-                self.send_header('Content-type', 'text/html')
-                self.end_headers()
-                self.wfile.write(f'''
-                <html>
-                    <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-                        <h1 style="color: #e74c3c;">Authentication Failed</h1>
-                        <p>Error: {error}</p>
-                        <p>You can close this window and try again.</p>
-                    </body>
-                </html>
-                '''.encode())
-                return
-            
-            if code:
-                # Forward to FastAPI callback endpoint
-                try:
-                    response = requests.post('http://127.0.0.1:8000/api/v1/ppt/chatgpt-auth/callback', 
-                                           json={'code': code, 'state': state})
-                    
-                    if response.status_code == 200:
-                        self.send_response(200)
-                        self.send_header('Content-type', 'text/html')
-                        self.end_headers()
-                        self.wfile.write('''
-                        <html>
-                            <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-                                <h1 style="color: #27ae60;">✓ Authentication Successful</h1>
-                                <p>ChatGPT login completed! You can close this window and return to Presenton.</p>
-                                <script>setTimeout(() => window.close(), 2000);</script>
-                            </body>
-                        </html>
-                        '''.encode())
-                    else:
-                        raise Exception(f"FastAPI error: {response.status_code}")
-                        
-                except Exception as e:
-                    self.send_response(500)
-                    self.send_header('Content-type', 'text/html') 
-                    self.end_headers()
-                    self.wfile.write(f'''
-                    <html>
-                        <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-                            <h1 style="color: #e74c3c;">Authentication Error</h1>
-                            <p>Failed to complete login: {e}</p>
-                            <p>Please try again.</p>
-                        </body>
-                    </html>
-                    '''.encode())
-            else:
-                self.send_response(400)
-                self.send_header('Content-type', 'text/html')
-                self.end_headers()
-                self.wfile.write('''
-                <html>
-                    <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-                        <h1>Missing authorization code</h1>
-                        <p>Please try again.</p>
-                    </body>
-                </html>
-                '''.encode())
-        else:
-            self.send_response(404)
-            self.end_headers()
-    
-    def log_message(self, format, *args):
-        return  # Suppress logs
-
-with socketserver.TCPServer(("", 1455), OAuthCallbackHandler) as httpd:
-    print("OAuth callback server listening on port 1455")
-    httpd.serve_forever()
-`],
+  // Start OAuth service using pi-ai (for Docker/web mode)
+  const oauthServiceProcess = spawn(
+    "node",
+    ["server.js"],
     {
+      cwd: oauthServiceDir,
       stdio: "inherit",
-      env: process.env,
+      env: {
+        ...process.env,
+        OAUTH_SERVICE_PORT: oauthServicePort.toString(),
+        OAUTH_CREDENTIALS_FILE: join(process.env.APP_DATA_DIRECTORY, "oauth_credentials.json"),
+        USER_CONFIG_PATH: userConfigPath,
+      },
     }
   );
 
-  oauthCallbackProcess.on("error", (err) => {
-    console.error("OAuth callback server failed to start:", err);
+  oauthServiceProcess.on("error", (err) => {
+    console.error("OAuth service failed to start:", err);
   });
 
   const nextjsProcess = spawn(
@@ -284,7 +234,7 @@ with socketserver.TCPServer(("", 1455), OAuthCallbackHandler) as httpd:
   const exitCode = await Promise.race([
     new Promise((resolve) => fastApiProcess.on("exit", resolve)),
     new Promise((resolve) => nextjsProcess.on("exit", resolve)),
-    new Promise((resolve) => oauthCallbackProcess.on("exit", resolve)),
+    new Promise((resolve) => oauthServiceProcess.on("exit", resolve)),
     new Promise((resolve) => ollamaProcess.on("exit", resolve)),
   ]);
 

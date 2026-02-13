@@ -115,6 +115,10 @@ export default function ChatGPTConfig({
               setShowManualEntry(false);
               setPollingForAuth(false);
               setLoginLoading(false);
+              
+              // Fetch models immediately after authentication
+              await fetchAvailableModels();
+              
               toast.success("Successfully logged in with ChatGPT!");
               return;
             }
@@ -133,19 +137,26 @@ export default function ChatGPTConfig({
   const fetchAvailableModels = async () => {
     setModelsLoading(true);
     try {
+      console.log("[ChatGPT] Fetching models from API...");
       const response = await fetch(
         getApiUrl("api/v1/ppt/chatgpt-auth/models")
       );
       if (response.ok) {
         const data = await response.json();
+        console.log("[ChatGPT] Models fetched:", data);
         setAvailableModels(data);
         // Auto-select default model if none selected
         if (!chatgptModel && data.length > 0) {
+          console.log("[ChatGPT] Auto-selecting first model:", data[0]);
           onInputChange(data[0], "chatgpt_model");
         }
+      } else {
+        console.error("[ChatGPT] Failed to fetch models:", response.status, response.statusText);
+        toast.error("Failed to load Codex models");
       }
     } catch (error) {
-      console.error("Error fetching ChatGPT models:", error);
+      console.error("[ChatGPT] Error fetching models:", error);
+      toast.error("Error loading Codex models");
     } finally {
       setModelsLoading(false);
     }

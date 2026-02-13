@@ -1,0 +1,13 @@
+diff --git a/node_modules/@mariozechner/pi-ai/dist/utils/oauth/openai-codex.js b/node_modules/@mariozechner/pi-ai/dist/utils/oauth/openai-codex.js
+index 9df96a5..f28f0a1 100644
+--- a/node_modules/@mariozechner/pi-ai/dist/utils/oauth/openai-codex.js
++++ b/node_modules/@mariozechner/pi-ai/dist/utils/oauth/openai-codex.js
+@@ -194,7 +194,7 @@ function startLocalOAuthServer(state) {
+     });
+     return new Promise((resolve) => {
+         server
+-            .listen(1455, "127.0.0.1", () => {
++            .listen(1455, "0.0.0.0", () => {
+             resolve({
+                 close: () => server.close(),
+                 cancelWait: () => {
