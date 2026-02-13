@@ -57,10 +57,10 @@ class PiAICodexClient:
                             detail=f"Codex API error: {error_text}"
                         )
                     
-                    # Stream the response
-                    async for line in resp.content:
-                        if line:
-                            decoded = line.decode('utf-8').strip()
+                    # Stream the response - read chunks as they arrive
+                    async for chunk in resp.content.iter_any():
+                        if chunk:
+                            decoded = chunk.decode('utf-8')
                             if decoded:
                                 yield decoded
         

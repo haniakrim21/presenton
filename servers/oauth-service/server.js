@@ -15,7 +15,7 @@ import path from 'path';
 // OAuth API server (port 1456)
 const app = express();
 const PORT = process.env.OAUTH_SERVICE_PORT || 1456;
-const CREDENTIALS_FILE = process.env.OAUTH_CREDENTIALS_FILE || '/app_data/oauth_credentials.json';
+const USER_CONFIG_PATH = process.env.USER_CONFIG_PATH || '/app_data/userConfig.json';
 
 app.use(cors());
 app.use(express.json());
@@ -23,19 +23,29 @@ app.use(express.json());
 // Store active OAuth flow state
 let activeOAuthFlow = null;
 
-console.log('Credentials will be saved to:', CREDENTIALS_FILE);
+console.log('Using userConfig at:', USER_CONFIG_PATH);
 
 /**
- * Load credentials from file
+ * Load credentials from userConfig.json
  */
 async function loadCredentials() {
   try {
-    if (fs.existsSync(CREDENTIALS_FILE)) {
-      const data = fs.readFileSync(CREDENTIALS_FILE, 'utf8');
-      return JSON.parse(data);
+    if (fs.existsSync(USER_CONFIG_PATH)) {
+      const data = fs.readFileSync(USER_CONFIG_PATH, 'utf8');
+      const config = JSON.parse(data);
+      
+      // Extract ChatGPT OAuth credentials from userConfig
+      if (config.CHATGPT_ACCESS_TOKEN && config.CHATGPT_REFRESH_TOKEN) {
+        return {
+          access_token: config.CHATGPT_ACCESS_TOKEN,
+          refresh_token: config.CHATGPT_REFRESH_TOKEN,
+          expires_at: config.CHATGPT_TOKEN_EXPIRES_AT,
+          accountId: config.CHATGPT_ACCOUNT_ID || ''
+        };
+      }
     }
   } catch (error) {
-    console.error('Error loading credentials:', error);
+    console.error('Error loading credentials from userConfig:', error);
   }
   return null;
 }
@@ -55,51 +65,38 @@ function normalizeCredentials(piaiCredentials) {
 }
 
 /**
- * Save credentials to file
+ * Save credentials to userConfig.json (single source of truth)
  */
 async function saveCredentials(credentials) {
   try {
-    const dir = path.dirname(CREDENTIALS_FILE);
+    const dir = path.dirname(USER_CONFIG_PATH);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
     
-    // Normalize credentials before saving
+    // Normalize credentials
     const normalized = normalizeCredentials(credentials);
-    fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(normalized, null, 2));
-    console.log('✅ Credentials saved successfully');
+    
+    // Load existing config or create new
+    let config = {};
+    if (fs.existsSync(USER_CONFIG_PATH)) {
+      config = JSON.parse(fs.readFileSync(USER_CONFIG_PATH, 'utf8'));
+    }
+    
+    // Update ChatGPT OAuth fields
+    config.CHATGPT_ACCESS_TOKEN = normalized.access_token;
+    config.CHATGPT_REFRESH_TOKEN = normalized.refresh_token;
+    config.CHATGPT_TOKEN_EXPIRES_AT = normalized.expires_at;
+    config.CHATGPT_ACCOUNT_ID = normalized.accountId;
+    config.LLM = 'openai-chatgpt'; // Set the LLM provider
+    
+    // Save back to userConfig
+    fs.writeFileSync(USER_CONFIG_PATH, JSON.stringify(config, null, 2));
+    console.log('✅ Credentials saved to userConfig successfully');
     return normalized;
   } catch (error) {
-    console.error('❌ Error saving credentials:', error);
+    console.error('❌ Error saving credentials to userConfig:', error);
     throw error;
-  }
-}
-
-/**
- * Update userConfig.json for FastAPI
- */
-async function updateUserConfig(credentials) {
-  try {
-    const userConfigPath = process.env.USER_CONFIG_PATH;
-    if (!userConfigPath) {
-      console.log('No USER_CONFIG_PATH set, skipping userConfig update');
-      return;
-    }
-
-    let config = {};
-    if (fs.existsSync(userConfigPath)) {
-      config = JSON.parse(fs.readFileSync(userConfigPath, 'utf8'));
-    }
-
-    config.CHATGPT_ACCESS_TOKEN = credentials.access_token;
-    config.CHATGPT_REFRESH_TOKEN = credentials.refresh_token;
-    config.CHATGPT_TOKEN_EXPIRES_AT = credentials.expires_at;
-    config.CHATGPT_ACCOUNT_ID = credentials.accountId || '';
-
-    fs.writeFileSync(userConfigPath, JSON.stringify(config, null, 2));
-    console.log('✅ UserConfig updated successfully');
-  } catch (error) {
-    console.error('❌ Error updating userConfig:', error);
   }
 }
 
@@ -162,11 +159,8 @@ app.post('/oauth/start', async (req, res) => {
       console.log('   Refresh token:', credentials.refresh ? '***' + credentials.refresh.slice(-10) : 'missing');
       console.log('   Expires at:', credentials.expires ? new Date(credentials.expires).toISOString() : 'missing');
       
-      // Save credentials to file (will normalize and return normalized version)
+      // Save credentials to userConfig (single source of truth)
       const normalized = await saveCredentials(credentials);
-      
-      // Also update userConfig.json for FastAPI
-      await updateUserConfig(normalized);
       
       activeOAuthFlow = null;
     }).catch((error) => {
@@ -260,9 +254,8 @@ app.post('/oauth/refresh', async (req, res) => {
     console.log('Refreshing access token...');
     const newCredentials = await refreshOAuthToken(refresh_token);
     
-    // Normalize and save updated credentials
+    // Normalize and save updated credentials to userConfig
     const normalized = await saveCredentials(newCredentials);
-    await updateUserConfig(normalized);
     
     console.log('✅ Token refreshed successfully');
     
@@ -490,11 +483,10 @@ app.post('/codex/stream', async (req, res) => {
         });
       }
       
-      // If credentials were refreshed, save them
+      // If credentials were refreshed, save them to userConfig
       if (apiKeyResult.newCredentials) {
         const refreshed = normalizeCredentials(apiKeyResult.newCredentials);
         await saveCredentials(refreshed);
-        await updateUserConfig(refreshed);
       }
       
       // Create context in pi-ai format
@@ -548,10 +540,19 @@ app.post('/codex/stream', async (req, res) => {
       // Stream the response with the API key
       const messageStream = stream(model, context, { apiKey: apiKeyResult.apiKey });
       
+      console.log('Starting to iterate stream events...');
+      let chunkCount = 0;
+      let totalChars = 0;
+      
       // Iterate through the async stream of events
       for await (const event of messageStream) {
+        // Log all event types to debug
+        console.log(`Event type: ${event.type}`);
+        
         // Only stream text_delta events (the actual text content)
         if (event.type === 'text_delta') {
+          chunkCount++;
+          totalChars += event.delta.length;
           res.write(event.delta);
         }
         // Optionally log errors
@@ -565,7 +566,12 @@ app.post('/codex/stream', async (req, res) => {
             return;
           }
         }
+        else if (event.type === 'done') {
+          console.log(`✅ Stream complete. Chunks: ${chunkCount}, Total chars: ${totalChars}, Reason: ${event.reason}`);
+        }
       }
+      
+      console.log(`Stream iteration finished. Total chunks sent: ${chunkCount}, Total chars: ${totalChars}`);
       
       // Close the response when done
       res.end();

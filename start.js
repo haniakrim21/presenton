@@ -132,13 +132,24 @@ const setupUserConfigFromEnv = () => {
       process.env.DALL_E_3_QUALITY || existingConfig.DALL_E_3_QUALITY,
     GPT_IMAGE_1_5_QUALITY:
       process.env.GPT_IMAGE_1_5_QUALITY || existingConfig.GPT_IMAGE_1_5_QUALITY,
-    // Preserve ChatGPT OAuth credentials (managed by oauth-service)
-    CHATGPT_ACCESS_TOKEN: existingConfig.CHATGPT_ACCESS_TOKEN,
-    CHATGPT_REFRESH_TOKEN: existingConfig.CHATGPT_REFRESH_TOKEN,
-    CHATGPT_TOKEN_EXPIRES_AT: existingConfig.CHATGPT_TOKEN_EXPIRES_AT,
-    CHATGPT_ACCOUNT_ID: existingConfig.CHATGPT_ACCOUNT_ID,
-    CHATGPT_MODEL: existingConfig.CHATGPT_MODEL,
   };
+  
+  // Preserve ChatGPT OAuth credentials (managed by oauth-service) - only if they exist
+  if (existingConfig.CHATGPT_ACCESS_TOKEN) {
+    userConfig.CHATGPT_ACCESS_TOKEN = existingConfig.CHATGPT_ACCESS_TOKEN;
+  }
+  if (existingConfig.CHATGPT_REFRESH_TOKEN) {
+    userConfig.CHATGPT_REFRESH_TOKEN = existingConfig.CHATGPT_REFRESH_TOKEN;
+  }
+  if (existingConfig.CHATGPT_TOKEN_EXPIRES_AT) {
+    userConfig.CHATGPT_TOKEN_EXPIRES_AT = existingConfig.CHATGPT_TOKEN_EXPIRES_AT;
+  }
+  if (existingConfig.CHATGPT_ACCOUNT_ID) {
+    userConfig.CHATGPT_ACCOUNT_ID = existingConfig.CHATGPT_ACCOUNT_ID;
+  }
+  if (existingConfig.CHATGPT_MODEL) {
+    userConfig.CHATGPT_MODEL = existingConfig.CHATGPT_MODEL;
+  }
 
   writeFileSync(userConfigPath, JSON.stringify(userConfig));
 };
@@ -188,7 +199,6 @@ const startServers = async () => {
       env: {
         ...process.env,
         OAUTH_SERVICE_PORT: oauthServicePort.toString(),
-        OAUTH_CREDENTIALS_FILE: join(process.env.APP_DATA_DIRECTORY, "oauth_credentials.json"),
         USER_CONFIG_PATH: userConfigPath,
       },
     }
