@@ -911,6 +911,7 @@ class LLMClient:
         strict: bool = False,
         tools: Optional[List[type[LLMTool] | LLMDynamicTool]] = None,
         max_tokens: Optional[int] = None,
+        depth: int = 0,
     ) -> dict:
         parsed_tools = self.tool_calls_handler.parse_tools(tools)
 
@@ -958,13 +959,178 @@ class LLMClient:
                     max_tokens=max_tokens,
                 )
             case LLMProvider.OPENAI_CHATGPT:
-                content = await self._generate_openai_structured(
+                # Use pi-ai client for structured generation with tools (like other providers)
+                print(f"[PiAPI] Generating structured content with model: {model}")
+                
+                # Convert LLMMessage to dict format
+                pi_messages = []
+                for msg in messages:
+                    if isinstance(msg, LLMSystemMessage):
+                        pi_messages.append({"role": "system", "content": msg.content})
+                    elif isinstance(msg, LLMUserMessage):
+                        pi_messages.append({"role": "user", "content": msg.content})
+                    else:
+                        content = getattr(msg, 'content', '')
+                        role = getattr(msg, 'role', 'user')
+                        pi_messages.append({"role": role, "content": content})
+                
+                # Use tools for structured output (like other providers)
+                response_schema = response_format
+                if strict and depth == 0:
+                    response_schema = ensure_strict_json_schema(
+                        response_format,
+                        path=(),
+                        root=response_format,
+                    )
+                
+                # Create ResponseSchema tool (like OpenAI, Google, Anthropic do)
+                response_schema_tool = {
+                    "type": "function",
+                    "function": {
+                        "name": "ResponseSchema",
+                        "description": "Provide response to the user",
+                        "parameters": response_schema
+                    }
+                }
+                
+                # Combine with other tools if any
+                all_tools = [response_schema_tool]
+                if parsed_tools:
+                    all_tools.extend(parsed_tools)
+                
+                # Get complete response with tools (non-streaming)
+                response = await self._piapi_client.complete_with_tools(
                     model=model,
-                    messages=messages,
-                    response_format=response_format,
-                    strict=strict,
-                    tools=parsed_tools,
-                    max_tokens=max_tokens,
+                    messages=pi_messages,
+                    tools=all_tools,
+                    max_tokens=max_tokens
+                )
+                
+                # Check for tool calls (like OpenAI does)
+                tool_calls = response.get("tool_calls")
+                has_response_schema = False
+                content = None
+                
+                print(f"[PiAPI] Response: content length={len(response.get('content', ''))}, tool_calls={tool_calls}")
+                
+                if tool_calls and isinstance(tool_calls, list) and len(tool_calls) > 0:
+                    print(f"[PiAPI] Processing {len(tool_calls)} tool call(s)")
+                    for tool_call in tool_calls:
+                        if not isinstance(tool_call, dict):
+                            print(f"[PiAPI] Warning: tool_call is not a dict: {type(tool_call)}")
+                            continue
+                            
+                        func = tool_call.get("function", {})
+                        if not isinstance(func, dict):
+                            print(f"[PiAPI] Warning: function is not a dict: {type(func)}")
+                            continue
+                            
+                        tool_name = func.get("name", "")
+                        print(f"[PiAPI] Tool call: name={tool_name}, arguments type={type(func.get('arguments'))}")
+                        
+                        if tool_name == "ResponseSchema":
+                            # Extract the arguments (which is the structured JSON)
+                            arguments = func.get("arguments", "{}")
+                            arguments_str = arguments if isinstance(arguments, str) else json.dumps(arguments)
+                            
+                            print(f"[PiAPI] ResponseSchema arguments: {arguments_str[:200]}...")
+                            
+                            try:
+                                content = json.loads(arguments_str)
+                                print(f"[PiAPI] ✅ Successfully parsed JSON from ResponseSchema tool call")
+                            except json.JSONDecodeError as e:
+                                print(f"[PiAPI] JSON parse error: {e}, trying dirtyjson...")
+                                # Try dirtyjson as fallback
+                                try:
+                                    content = dirtyjson.load(arguments_str)
+                                    print(f"[PiAPI] ✅ Successfully parsed with dirtyjson")
+                                except Exception as e2:
+                                    print(f"[PiAPI] ❌ dirtyjson also failed: {e2}")
+                                    raise HTTPException(
+                                        status_code=400,
+                                        detail=f"Failed to parse ResponseSchema arguments as JSON: {str(e)}"
+                                    )
+                            has_response_schema = True
+                            break
+                else:
+                    print(f"[PiAPI] ⚠️ No tool calls found or tool_calls is invalid: {tool_calls}")
+                
+                # If no ResponseSchema tool call, check if there are other tool calls
+                if not has_response_schema and tool_calls:
+                    # Handle other tool calls (similar to OpenAI)
+                    parsed_tool_calls = [
+                        OpenAIToolCall(
+                            id=tc.get("id", ""),
+                            type=tc.get("type", "function"),
+                            function=OpenAIToolCallFunction(
+                                name=tc.get("function", {}).get("name", ""),
+                                arguments=tc.get("function", {}).get("arguments", "{}"),
+                            ),
+                        )
+                        for tc in tool_calls
+                    ]
+                    tool_call_messages = await self.tool_calls_handler.handle_tool_calls_openai(
+                        parsed_tool_calls
+                    )
+                    new_messages = [
+                        *messages,
+                        OpenAIAssistantMessage(
+                            role="assistant",
+                            content=response.get("content", ""),
+                            tool_calls=[tc.model_dump() for tc in parsed_tool_calls],
+                        ),
+                        *tool_call_messages,
+                    ]
+                    # Recursively call with updated messages
+                    return await self.generate_structured(
+                        model=model,
+                        messages=new_messages,
+                        response_format=response_schema,
+                        strict=strict,
+                        tools=tools,
+                        max_tokens=max_tokens,
+                    )
+                
+                # If we got ResponseSchema tool call, return its arguments
+                if has_response_schema and content is not None:
+                    if depth == 0:
+                        return dict(content) if isinstance(content, dict) else content
+                    return content
+                
+                # Fallback: try to parse content as JSON (for backwards compatibility)
+                response_text = response.get("content", "")
+                if response_text:
+                    import re
+                    try:
+                        content = json.loads(response_text.strip())
+                    except json.JSONDecodeError:
+                        # Try to extract JSON from markdown code blocks
+                        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+                        if json_match:
+                            try:
+                                content = json.loads(json_match.group(1))
+                            except json.JSONDecodeError:
+                                content = dirtyjson.load(json_match.group(1))
+                        else:
+                            # Try to find JSON object in the text
+                            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                            if json_match:
+                                try:
+                                    content = json.loads(json_match.group(0))
+                                except json.JSONDecodeError:
+                                    content = dirtyjson.load(json_match.group(0))
+                            else:
+                                content = None
+                    
+                    if content:
+                        if depth == 0:
+                            return dict(content) if isinstance(content, dict) else content
+                        return content
+                
+                # No valid content found
+                raise HTTPException(
+                    status_code=400,
+                    detail="LLM did not return valid structured content"
                 )
         if content is None:
             raise HTTPException(

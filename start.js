@@ -98,7 +98,9 @@ const setupUserConfigFromEnv = () => {
     existingConfig.LLM = undefined;
   }
 
-  const userConfig = {
+  // Only update values that are explicitly provided via env vars or don't exist yet
+  // This ensures we don't overwrite values set by other services (like oauth-service)
+  const updates = {
     LLM: process.env.LLM || existingConfig.LLM,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY || existingConfig.OPENAI_API_KEY,
     OPENAI_MODEL: process.env.OPENAI_MODEL || existingConfig.OPENAI_MODEL,
@@ -132,26 +134,20 @@ const setupUserConfigFromEnv = () => {
       process.env.DALL_E_3_QUALITY || existingConfig.DALL_E_3_QUALITY,
     GPT_IMAGE_1_5_QUALITY:
       process.env.GPT_IMAGE_1_5_QUALITY || existingConfig.GPT_IMAGE_1_5_QUALITY,
+    CHATGPT_ACCESS_TOKEN: process.env.CHATGPT_ACCESS_TOKEN || existingConfig.CHATGPT_ACCESS_TOKEN,
+    CHATGPT_REFRESH_TOKEN: process.env.CHATGPT_REFRESH_TOKEN || existingConfig.CHATGPT_REFRESH_TOKEN,
+    CHATGPT_TOKEN_EXPIRES_AT: process.env.CHATGPT_TOKEN_EXPIRES_AT || existingConfig.CHATGPT_TOKEN_EXPIRES_AT,
+    CHATGPT_ACCOUNT_ID: process.env.CHATGPT_ACCOUNT_ID || existingConfig.CHATGPT_ACCOUNT_ID,
+    CHATGPT_MODEL: process.env.CHATGPT_MODEL || existingConfig.CHATGPT_MODEL,
   };
   
-  // Preserve ChatGPT OAuth credentials (managed by oauth-service) - only if they exist
-  if (existingConfig.CHATGPT_ACCESS_TOKEN) {
-    userConfig.CHATGPT_ACCESS_TOKEN = existingConfig.CHATGPT_ACCESS_TOKEN;
-  }
-  if (existingConfig.CHATGPT_REFRESH_TOKEN) {
-    userConfig.CHATGPT_REFRESH_TOKEN = existingConfig.CHATGPT_REFRESH_TOKEN;
-  }
-  if (existingConfig.CHATGPT_TOKEN_EXPIRES_AT) {
-    userConfig.CHATGPT_TOKEN_EXPIRES_AT = existingConfig.CHATGPT_TOKEN_EXPIRES_AT;
-  }
-  if (existingConfig.CHATGPT_ACCOUNT_ID) {
-    userConfig.CHATGPT_ACCOUNT_ID = existingConfig.CHATGPT_ACCOUNT_ID;
-  }
-  if (existingConfig.CHATGPT_MODEL) {
-    userConfig.CHATGPT_MODEL = existingConfig.CHATGPT_MODEL;
-  }
+  // Merge updates with existing config, preserving all other fields
+  const userConfig = {
+    ...existingConfig,  // Keep all existing fields first
+    ...updates          // Apply updates on top
+  };
 
-  writeFileSync(userConfigPath, JSON.stringify(userConfig));
+  writeFileSync(userConfigPath, JSON.stringify(userConfig, null, 2));
 };
 
 const startServers = async () => {

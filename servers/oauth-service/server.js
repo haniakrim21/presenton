@@ -8,7 +8,7 @@
 
 import express from 'express';
 import cors from 'cors';
-import { loginOpenAICodex, refreshOAuthToken, getModels, complete, stream, getOAuthApiKey } from '@mariozechner/pi-ai';
+import { loginOpenAICodex, refreshOAuthToken, getModels, complete, stream, getOAuthApiKey, Type } from '@mariozechner/pi-ai';
 import fs from 'fs';
 import path from 'path';
 
@@ -83,16 +83,35 @@ async function saveCredentials(credentials) {
       config = JSON.parse(fs.readFileSync(USER_CONFIG_PATH, 'utf8'));
     }
     
-    // Update ChatGPT OAuth fields
-    config.CHATGPT_ACCESS_TOKEN = normalized.access_token;
-    config.CHATGPT_REFRESH_TOKEN = normalized.refresh_token;
-    config.CHATGPT_TOKEN_EXPIRES_AT = normalized.expires_at;
-    config.CHATGPT_ACCOUNT_ID = normalized.accountId;
-    config.LLM = 'openai-chatgpt'; // Set the LLM provider
+    // Update ChatGPT OAuth fields - ONLY if they have actual values
+    // This prevents accidentally clearing tokens when partial credentials are passed
+    if (normalized.access_token !== undefined && normalized.access_token !== null && normalized.access_token !== '') {
+      config.CHATGPT_ACCESS_TOKEN = normalized.access_token;
+    }
+    if (normalized.refresh_token !== undefined && normalized.refresh_token !== null && normalized.refresh_token !== '') {
+      config.CHATGPT_REFRESH_TOKEN = normalized.refresh_token;
+    }
+    if (normalized.expires_at !== undefined && normalized.expires_at !== null) {
+      config.CHATGPT_TOKEN_EXPIRES_AT = normalized.expires_at;
+    }
+    if (normalized.accountId !== undefined && normalized.accountId !== null && normalized.accountId !== '') {
+      config.CHATGPT_ACCOUNT_ID = normalized.accountId;
+    }
+    // Only set LLM if we actually have valid tokens
+    if (normalized.access_token && normalized.refresh_token) {
+      config.LLM = 'openai-chatgpt'; // Set the LLM provider
+    }
     
     // Save back to userConfig
     fs.writeFileSync(USER_CONFIG_PATH, JSON.stringify(config, null, 2));
     console.log('✅ Credentials saved to userConfig successfully');
+    console.log('📝 Saved credentials:', {
+      hasAccessToken: !!config.CHATGPT_ACCESS_TOKEN,
+      hasRefreshToken: !!config.CHATGPT_REFRESH_TOKEN,
+      accountId: config.CHATGPT_ACCOUNT_ID,
+      expiresAt: config.CHATGPT_TOKEN_EXPIRES_AT,
+      accessTokenPreview: config.CHATGPT_ACCESS_TOKEN ? `${config.CHATGPT_ACCESS_TOKEN.substring(0, 20)}...` : 'none'
+    });
     return normalized;
   } catch (error) {
     console.error('❌ Error saving credentials to userConfig:', error);
@@ -308,20 +327,15 @@ app.get('/oauth/models', async (req, res) => {
  */
 app.delete('/oauth/logout', async (req, res) => {
   try {
-    if (fs.existsSync(CREDENTIALS_FILE)) {
-      fs.unlinkSync(CREDENTIALS_FILE);
-      console.log('✅ Credentials cleared');
-    }
-    
-    // Also clear from userConfig
-    const userConfigPath = process.env.USER_CONFIG_PATH;
-    if (userConfigPath && fs.existsSync(userConfigPath)) {
-      const config = JSON.parse(fs.readFileSync(userConfigPath, 'utf8'));
+    // Clear from userConfig
+    if (fs.existsSync(USER_CONFIG_PATH)) {
+      const config = JSON.parse(fs.readFileSync(USER_CONFIG_PATH, 'utf8'));
       delete config.CHATGPT_ACCESS_TOKEN;
       delete config.CHATGPT_REFRESH_TOKEN;
       delete config.CHATGPT_TOKEN_EXPIRES_AT;
       delete config.CHATGPT_ACCOUNT_ID;
-      fs.writeFileSync(userConfigPath, JSON.stringify(config, null, 2));
+      fs.writeFileSync(USER_CONFIG_PATH, JSON.stringify(config, null, 2));
+      console.log('✅ Credentials cleared from userConfig');
     }
     
     res.json({
@@ -596,6 +610,189 @@ app.post('/codex/stream', async (req, res) => {
         error: error.message || 'Failed to stream completion'
       });
     }
+  }
+});
+
+/**
+ * POST /codex/complete
+ * Get a complete (non-streaming) completion from Codex API with tool support
+ * Body: { model, messages, tools?, max_tokens? }
+ */
+app.post('/codex/complete', async (req, res) => {
+  try {
+    const { model: modelId, messages, tools, max_tokens } = req.body;
+    
+    if (!modelId || !messages) {
+      return res.status(400).json({
+        success: false,
+        error: 'model and messages are required'
+      });
+    }
+    
+    // Load credentials
+    const credentials = await loadCredentials();
+    if (!credentials || !credentials.access_token) {
+      return res.status(401).json({
+        success: false,
+        error: 'Not authenticated. Please login first.'
+      });
+    }
+    
+    // Get the model
+    const models = getModels('openai-codex');
+    const model = models.find(m => m.id === modelId);
+    
+    if (!model) {
+      return res.status(400).json({
+        success: false,
+        error: `Model ${modelId} not found`
+      });
+    }
+    
+    console.log(`📡 Getting complete response for model: ${model.id}`);
+    
+    try {
+      // Get API key from OAuth credentials (auto-refreshes if needed)
+      const auth = {
+        'openai-codex': {
+          type: 'oauth',
+          access: credentials.access_token,
+          refresh: credentials.refresh_token,
+          expires: credentials.expires_at,
+          accountId: credentials.accountId
+        }
+      };
+      
+      const apiKeyResult = await getOAuthApiKey('openai-codex', auth);
+      if (!apiKeyResult) {
+        return res.status(401).json({
+          success: false,
+          error: 'Failed to get API key from OAuth credentials'
+        });
+      }
+      
+      // If credentials were refreshed, save them to userConfig
+      if (apiKeyResult.newCredentials) {
+        const refreshed = normalizeCredentials(apiKeyResult.newCredentials);
+        await saveCredentials(refreshed);
+      }
+      
+      // Create context in pi-ai format
+      let systemPrompt = undefined;
+      const contextMessages = [];
+      
+      for (const msg of messages) {
+        // Extract content from different formats
+        let content = '';
+        if (typeof msg.content === 'string') {
+          content = msg.content;
+        } else if (msg.text) {
+          content = msg.text;
+        } else if (msg.content && Array.isArray(msg.content)) {
+          // If content is an array of blocks, extract text
+          content = msg.content
+            .filter(block => block.type === 'text' || block.text)
+            .map(block => block.text || block.content || '')
+            .join('\n');
+        }
+        
+        // Separate system messages from user/assistant messages
+        if (msg.role === 'system') {
+          systemPrompt = content;
+        } else {
+          contextMessages.push({
+            role: msg.role,
+            content: content
+          });
+        }
+      }
+      
+      const context = {
+        messages: contextMessages
+      };
+      
+      // Add systemPrompt if present
+      if (systemPrompt) {
+        context.systemPrompt = systemPrompt;
+      }
+      
+      // Convert OpenAI tool format to pi-ai Tool format
+      if (tools && Array.isArray(tools) && tools.length > 0) {
+        const piTools = tools.map(tool => {
+          // OpenAI format: { type: "function", function: { name, description, parameters } }
+          // pi-ai format: { name, description, parameters } where parameters is a TypeBox schema
+          const func = tool.function || tool;
+          return {
+            name: func.name,
+            description: func.description || '',
+            // pi-ai expects TypeBox schema, but we can pass JSON schema directly
+            // pi-ai will handle the conversion
+            parameters: func.parameters || {}
+          };
+        });
+        context.tools = piTools;
+        console.log(`🔧 Using ${piTools.length} tools`);
+      }
+      
+      // Get complete response (non-streaming)
+      const response = await complete(model, context, { apiKey: apiKeyResult.apiKey });
+      
+      // Extract text content and tool calls
+      let textContent = '';
+      const toolCalls = [];
+      
+      if (response && response.content) {
+        for (const block of response.content) {
+          if (block.type === 'text') {
+            textContent += block.text || '';
+          } else if (block.type === 'toolCall') {
+            toolCalls.push({
+              id: block.id || `tool_${Date.now()}_${Math.random()}`,
+              type: 'function',
+              function: {
+                name: block.name,
+                arguments: typeof block.arguments === 'string' 
+                  ? block.arguments 
+                  : JSON.stringify(block.arguments)
+              }
+            });
+          }
+        }
+      }
+      
+      // Log response for debugging
+      console.log(`✅ Complete response received. Text length: ${textContent.length}, Tool calls: ${toolCalls.length}`);
+      
+      // Ensure we always return valid data
+      if (!textContent && toolCalls.length === 0) {
+        console.warn('⚠️ Warning: Empty response from pi-ai complete');
+        return res.status(500).json({
+          success: false,
+          error: 'Empty response from model'
+        });
+      }
+      
+      res.json({
+        success: true,
+        content: textContent,
+        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+        usage: response?.usage
+      });
+      
+    } catch (error) {
+      console.error('Error getting complete response:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to get complete response'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error in complete endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get complete response'
+    });
   }
 });
 

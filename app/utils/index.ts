@@ -10,41 +10,48 @@ export function setUserConfig(userConfig: UserConfig) {
     const configData = fs.readFileSync(userConfigPath, 'utf-8')
     existingConfig = JSON.parse(configData)
   }
+  
+  // Only update fields that are explicitly provided (not undefined)
+  // This ensures we don't overwrite values that weren't meant to be changed
   const mergedConfig: UserConfig = {
-    CAN_CHANGE_KEYS: userConfig.CAN_CHANGE_KEYS || existingConfig.CAN_CHANGE_KEYS,
-    LLM: userConfig.LLM || existingConfig.LLM,
-    OPENAI_API_KEY: userConfig.OPENAI_API_KEY || existingConfig.OPENAI_API_KEY,
-    OPENAI_MODEL: userConfig.OPENAI_MODEL || existingConfig.OPENAI_MODEL,
-    GOOGLE_API_KEY: userConfig.GOOGLE_API_KEY || existingConfig.GOOGLE_API_KEY,
-    GOOGLE_MODEL: userConfig.GOOGLE_MODEL || existingConfig.GOOGLE_MODEL,
-    ANTHROPIC_API_KEY: userConfig.ANTHROPIC_API_KEY || existingConfig.ANTHROPIC_API_KEY,
-    ANTHROPIC_MODEL: userConfig.ANTHROPIC_MODEL || existingConfig.ANTHROPIC_MODEL,
-    OLLAMA_URL: userConfig.OLLAMA_URL || existingConfig.OLLAMA_URL,
-    OLLAMA_MODEL: userConfig.OLLAMA_MODEL || existingConfig.OLLAMA_MODEL,
-    CUSTOM_LLM_URL: userConfig.CUSTOM_LLM_URL || existingConfig.CUSTOM_LLM_URL,
-    CUSTOM_LLM_API_KEY: userConfig.CUSTOM_LLM_API_KEY || existingConfig.CUSTOM_LLM_API_KEY,
-    CUSTOM_MODEL: userConfig.CUSTOM_MODEL || existingConfig.CUSTOM_MODEL,
-    PEXELS_API_KEY: userConfig.PEXELS_API_KEY || existingConfig.PEXELS_API_KEY,
-    PIXABAY_API_KEY: userConfig.PIXABAY_API_KEY || existingConfig.PIXABAY_API_KEY,
-    IMAGE_PROVIDER: userConfig.IMAGE_PROVIDER || existingConfig.IMAGE_PROVIDER,
-    DISABLE_IMAGE_GENERATION: userConfig.DISABLE_IMAGE_GENERATION || existingConfig.DISABLE_IMAGE_GENERATION,
-    EXTENDED_REASONING: userConfig.EXTENDED_REASONING || existingConfig.EXTENDED_REASONING,
-    TOOL_CALLS: userConfig.TOOL_CALLS || existingConfig.TOOL_CALLS,
-    DISABLE_THINKING: userConfig.DISABLE_THINKING || existingConfig.DISABLE_THINKING,
-    WEB_GROUNDING: userConfig.WEB_GROUNDING || existingConfig.WEB_GROUNDING,
-    DATABASE_URL: userConfig.DATABASE_URL || existingConfig.DATABASE_URL,
-    DISABLE_ANONYMOUS_TRACKING: userConfig.DISABLE_ANONYMOUS_TRACKING || existingConfig.DISABLE_ANONYMOUS_TRACKING,
-    COMFYUI_URL: userConfig.COMFYUI_URL || existingConfig.COMFYUI_URL,
-    COMFYUI_WORKFLOW: userConfig.COMFYUI_WORKFLOW || existingConfig.COMFYUI_WORKFLOW,
-    DALL_E_3_QUALITY: userConfig.DALL_E_3_QUALITY || existingConfig.DALL_E_3_QUALITY,
-    GPT_IMAGE_1_5_QUALITY: userConfig.GPT_IMAGE_1_5_QUALITY || existingConfig.GPT_IMAGE_1_5_QUALITY,
-    CHATGPT_ACCESS_TOKEN: userConfig.CHATGPT_ACCESS_TOKEN || existingConfig.CHATGPT_ACCESS_TOKEN,
-    CHATGPT_REFRESH_TOKEN: userConfig.CHATGPT_REFRESH_TOKEN || existingConfig.CHATGPT_REFRESH_TOKEN,
-    CHATGPT_TOKEN_EXPIRES_AT: userConfig.CHATGPT_TOKEN_EXPIRES_AT || existingConfig.CHATGPT_TOKEN_EXPIRES_AT,
-    CHATGPT_ACCOUNT_ID: userConfig.CHATGPT_ACCOUNT_ID || existingConfig.CHATGPT_ACCOUNT_ID,
-    CHATGPT_MODEL: userConfig.CHATGPT_MODEL || existingConfig.CHATGPT_MODEL,
+    ...existingConfig,  // Start with all existing fields
   }
-  fs.writeFileSync(userConfigPath, JSON.stringify(mergedConfig))
+  
+  // Only update fields that are explicitly provided in userConfig
+  if (userConfig.CAN_CHANGE_KEYS !== undefined) mergedConfig.CAN_CHANGE_KEYS = userConfig.CAN_CHANGE_KEYS;
+  if (userConfig.LLM !== undefined) mergedConfig.LLM = userConfig.LLM;
+  if (userConfig.OPENAI_API_KEY !== undefined) mergedConfig.OPENAI_API_KEY = userConfig.OPENAI_API_KEY;
+  if (userConfig.OPENAI_MODEL !== undefined) mergedConfig.OPENAI_MODEL = userConfig.OPENAI_MODEL;
+  if (userConfig.GOOGLE_API_KEY !== undefined) mergedConfig.GOOGLE_API_KEY = userConfig.GOOGLE_API_KEY;
+  if (userConfig.GOOGLE_MODEL !== undefined) mergedConfig.GOOGLE_MODEL = userConfig.GOOGLE_MODEL;
+  if (userConfig.ANTHROPIC_API_KEY !== undefined) mergedConfig.ANTHROPIC_API_KEY = userConfig.ANTHROPIC_API_KEY;
+  if (userConfig.ANTHROPIC_MODEL !== undefined) mergedConfig.ANTHROPIC_MODEL = userConfig.ANTHROPIC_MODEL;
+  if (userConfig.OLLAMA_URL !== undefined) mergedConfig.OLLAMA_URL = userConfig.OLLAMA_URL;
+  if (userConfig.OLLAMA_MODEL !== undefined) mergedConfig.OLLAMA_MODEL = userConfig.OLLAMA_MODEL;
+  if (userConfig.CUSTOM_LLM_URL !== undefined) mergedConfig.CUSTOM_LLM_URL = userConfig.CUSTOM_LLM_URL;
+  if (userConfig.CUSTOM_LLM_API_KEY !== undefined) mergedConfig.CUSTOM_LLM_API_KEY = userConfig.CUSTOM_LLM_API_KEY;
+  if (userConfig.CUSTOM_MODEL !== undefined) mergedConfig.CUSTOM_MODEL = userConfig.CUSTOM_MODEL;
+  if (userConfig.PEXELS_API_KEY !== undefined) mergedConfig.PEXELS_API_KEY = userConfig.PEXELS_API_KEY;
+  if (userConfig.PIXABAY_API_KEY !== undefined) mergedConfig.PIXABAY_API_KEY = userConfig.PIXABAY_API_KEY;
+  if (userConfig.IMAGE_PROVIDER !== undefined) mergedConfig.IMAGE_PROVIDER = userConfig.IMAGE_PROVIDER;
+  if (userConfig.DISABLE_IMAGE_GENERATION !== undefined) mergedConfig.DISABLE_IMAGE_GENERATION = userConfig.DISABLE_IMAGE_GENERATION;
+  if (userConfig.EXTENDED_REASONING !== undefined) mergedConfig.EXTENDED_REASONING = userConfig.EXTENDED_REASONING;
+  if (userConfig.TOOL_CALLS !== undefined) mergedConfig.TOOL_CALLS = userConfig.TOOL_CALLS;
+  if (userConfig.DISABLE_THINKING !== undefined) mergedConfig.DISABLE_THINKING = userConfig.DISABLE_THINKING;
+  if (userConfig.WEB_GROUNDING !== undefined) mergedConfig.WEB_GROUNDING = userConfig.WEB_GROUNDING;
+  if (userConfig.DATABASE_URL !== undefined) mergedConfig.DATABASE_URL = userConfig.DATABASE_URL;
+  if (userConfig.DISABLE_ANONYMOUS_TRACKING !== undefined) mergedConfig.DISABLE_ANONYMOUS_TRACKING = userConfig.DISABLE_ANONYMOUS_TRACKING;
+  if (userConfig.COMFYUI_URL !== undefined) mergedConfig.COMFYUI_URL = userConfig.COMFYUI_URL;
+  if (userConfig.COMFYUI_WORKFLOW !== undefined) mergedConfig.COMFYUI_WORKFLOW = userConfig.COMFYUI_WORKFLOW;
+  if (userConfig.DALL_E_3_QUALITY !== undefined) mergedConfig.DALL_E_3_QUALITY = userConfig.DALL_E_3_QUALITY;
+  if (userConfig.GPT_IMAGE_1_5_QUALITY !== undefined) mergedConfig.GPT_IMAGE_1_5_QUALITY = userConfig.GPT_IMAGE_1_5_QUALITY;
+  if (userConfig.CHATGPT_ACCESS_TOKEN !== undefined) mergedConfig.CHATGPT_ACCESS_TOKEN = userConfig.CHATGPT_ACCESS_TOKEN;
+  if (userConfig.CHATGPT_REFRESH_TOKEN !== undefined) mergedConfig.CHATGPT_REFRESH_TOKEN = userConfig.CHATGPT_REFRESH_TOKEN;
+  if (userConfig.CHATGPT_TOKEN_EXPIRES_AT !== undefined) mergedConfig.CHATGPT_TOKEN_EXPIRES_AT = userConfig.CHATGPT_TOKEN_EXPIRES_AT;
+  if (userConfig.CHATGPT_ACCOUNT_ID !== undefined) mergedConfig.CHATGPT_ACCOUNT_ID = userConfig.CHATGPT_ACCOUNT_ID;
+  if (userConfig.CHATGPT_MODEL !== undefined) mergedConfig.CHATGPT_MODEL = userConfig.CHATGPT_MODEL;
+  
+  fs.writeFileSync(userConfigPath, JSON.stringify(mergedConfig, null, 2))
 }
 
 export function getUserConfig(): UserConfig {
