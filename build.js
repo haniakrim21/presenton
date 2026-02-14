@@ -26,8 +26,9 @@ const afterPack = async (context) => {
 }
 
 const config = {
-  appId: "ai.presenton",
+  appId: "PresentonAI.Presenton",
   asar: false,
+  copyright: "Copyright © 2026 Presenton",
   directories: {
     output: "dist",
     buildResources: "build",
@@ -52,20 +53,17 @@ const config = {
   },
   win: {
     artifactName: "Presenton-${version}.${ext}",
-    // Build NSIS only; AppX (MakeAppx) can fail with 0x8007007b due to long paths
-    // in the FastAPI bundle or reserved names. Use NSIS for installers.
-    target: [{ target: "nsis", arch: ["x64"] }],
+    target: ["appx"],
     icon: "resources/ui/assets/images/presenton.ico",
     requestedExecutionLevel: "asInvoker",
     // Skip rcedit (set exe metadata) to avoid "Unable to commit changes" when exe is locked (e.g. OneDrive)
     signAndEditExecutable: false,
   },
-  nsis: {
-    oneClick: false,
-    perMachine: false,
-    allowToChangeInstallationDirectory: true,
-    installerIcon: "resources/ui/assets/images/presenton.ico",
-    uninstallerIcon: "resources/ui/assets/images/presenton.ico",
+  appx: {
+    identityName: "PresentonAI.Presenton",
+    publisher: "CN=8A2C57B5-F1C6-473A-93EE-2E9B72134341",
+    publisherDisplayName: "Presenton AI",
+    applicationId: "PresentonAI.Presenton",
   },
 }
 
