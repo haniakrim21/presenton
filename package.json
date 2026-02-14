@@ -5,6 +5,7 @@
   "main": "app_dist/main.js",
   "description": "Open-Source AI Presentation Generator",
   "homepage": "https://presenton.ai",
+  "repository": "https://github.com/presenton/presenton",
    "keywords": [
     "electron",
     "electron-builder",
