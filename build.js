@@ -38,6 +38,9 @@ const config = {
     "app_dist",
     "node_modules",
     "NOTICE",
+    "!resources/nextjs/**",
+    "!resources/fastapi/_internal/mammoth/**",
+    "!resources/fastapi/_internal/mammoth-*.dist-info/**",
   ],
   afterPack,
   mac: {
