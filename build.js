@@ -37,14 +37,7 @@ const config = {
     "resources",
     "app_dist",
     "node_modules",
-    "NOTICE",
-    "!resources/nextjs/**",
-    "!resources/fastapi/_internal/mammoth/**",
-    "!resources/fastapi/_internal/mammoth-*.dist-info/**",
-    "!resources/fastapi/_internal/fastembed_cache/**",
-    // Fix: Exclude test file with spaces in filename (Lorem ipsum.txt)
-    "!resources/fastapi/_internal/**/Lorem ipsum.txt",
-    "!resources/fastapi/_internal/**/*Lorem ipsum*",
+    "NOTICE"
   ],
   afterPack,
   mac: {
