@@ -41,6 +41,7 @@ const config = {
     "!resources/nextjs/**",
     "!resources/fastapi/_internal/mammoth/**",
     "!resources/fastapi/_internal/mammoth-*.dist-info/**",
+    "!resources/fastapi/_internal/fastembed_cache/**",
   ],
   afterPack,
   mac: {
