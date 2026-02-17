@@ -20,7 +20,7 @@ interface ElectronAPI {
   getUserConfig: () => Promise<any>;
   setUserConfig: (userConfig: any) => Promise<any>;
   getCanChangeKeys: () => Promise<boolean>;
-  readFile: (filePath: string) => Promise<string>;
+  readFile: (filePath: string) => Promise<{ content: string }>;
   getSlideMetadata: (url: string, theme: string, customColors?: any, tempDirectory?: string) => Promise<any>;
   getFooter: (userId: string) => Promise<any>;
   setFooter: (userId: string, properties: any) => Promise<any>;

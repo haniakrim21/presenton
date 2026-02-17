@@ -93,10 +93,36 @@ const DocumentsPreviewPage: React.FC = () => {
   };
 
   const readFile = async (filePath: string) => {
+    // Check if we're in Electron environment
+    const isElectron = typeof window !== 'undefined' && 
+                       typeof (window as any).electron !== 'undefined' &&
+                       typeof (window as any).electron?.readFile === 'function';
+    
+    if (isElectron) {
+      try {
+        // Use Electron IPC handler
+        const result = await (window as any).electron.readFile(filePath);
+        return result;
+      } catch (error) {
+        console.error('Error reading file via IPC:', error);
+        throw error;
+      }
+    }
+    
+    // Fallback to fetch only if electron API is not available (for web development)
+    // This should rarely happen in Electron app, but useful for web testing
     const res = await fetch(`/api/read-file`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ filePath }),
     });
+    
+    if (!res.ok) {
+      throw new Error(`Failed to read file: ${res.statusText}`);
+    }
+    
     return res.json();
   };
 
