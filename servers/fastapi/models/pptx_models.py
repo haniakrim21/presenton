@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Annotated, List, Literal, Optional
+from typing import Annotated, List, Literal, Optional, Union
 from annotated_types import Len
-from pydantic import BaseModel
+from pydantic import BaseModel, Discriminator
 from pptx.util import Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE, MSO_CONNECTOR_TYPE
@@ -154,15 +154,22 @@ class PptxConnectorModel(PptxShapeModel):
     opacity: float = 1.0
 
 
+# Define a discriminated union for shapes
+PptxShapeUnion = Annotated[
+    Union[
+        PptxTextBoxModel,
+        PptxAutoShapeBoxModel,
+        PptxConnectorModel,
+        PptxPictureBoxModel,
+    ],
+    Discriminator("shape_type"),
+]
+
+
 class PptxSlideModel(BaseModel):
     background: Optional[PptxFillModel] = None
     note: Optional[str] = None
-    shapes: List[
-        PptxTextBoxModel
-        | PptxAutoShapeBoxModel
-        | PptxConnectorModel
-        | PptxPictureBoxModel
-    ]
+    shapes: List[PptxShapeUnion]
 
 
 class PptxPresentationModel(BaseModel):
