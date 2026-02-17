@@ -13,6 +13,13 @@ datas_pptx, binaries_pptx, hiddenimports_pptx = collect_all('pptx')
 # collect_all returns empty lists if package not installed, so safe to call always
 datas_greenlet, binaries_greenlet, hiddenimports_greenlet = collect_all('greenlet')
 
+# Collect docling - only installed on Linux/macOS (via pyproject.toml)
+# collect_all returns empty lists if package not installed, so safe to call always
+datas_docling, binaries_docling, hiddenimports_docling = collect_all('docling')
+# Also collect docling-core and docling-parse which are dependencies
+datas_docling_core, binaries_docling_core, hiddenimports_docling_core = collect_all('docling-core')
+datas_docling_parse, binaries_docling_parse, hiddenimports_docling_parse = collect_all('docling-parse')
+
 # No excludes needed - pyproject.toml handles platform-specific dependencies
 # If a package isn't installed, PyInstaller won't try to bundle it
 excludes = []
@@ -20,12 +27,12 @@ excludes = []
 a = Analysis(
     ['server.py'],
     pathex=[],
-    binaries=binaries_fastembed + binaries_fastembed_vs + binaries_onnx + binaries_pptx + binaries_greenlet,
+    binaries=binaries_fastembed + binaries_fastembed_vs + binaries_onnx + binaries_pptx + binaries_greenlet + binaries_docling + binaries_docling_core + binaries_docling_parse,
     datas=[
         ('assets', 'assets'),
         ('fastembed_cache', 'fastembed_cache'),
         ('static', 'static'),
-    ] + datas_fastembed + datas_fastembed_vs + datas_onnx + datas_pptx + datas_greenlet,
+    ] + datas_fastembed + datas_fastembed_vs + datas_onnx + datas_pptx + datas_greenlet + datas_docling + datas_docling_core + datas_docling_parse,
     hiddenimports=[
         'aiosqlite',
         'sqlite3',
@@ -33,7 +40,8 @@ a = Analysis(
         'pandas',
         'greenlet',
         'greenlet._greenlet',
-    ] + hiddenimports_fastembed + hiddenimports_fastembed_vs + hiddenimports_onnx + hiddenimports_pptx + hiddenimports_greenlet,
+        'importlib.metadata',
+    ] + hiddenimports_fastembed + hiddenimports_fastembed_vs + hiddenimports_onnx + hiddenimports_pptx + hiddenimports_greenlet + hiddenimports_docling + hiddenimports_docling_core + hiddenimports_docling_parse,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

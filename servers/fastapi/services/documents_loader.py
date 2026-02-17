@@ -101,17 +101,25 @@ class DocumentsLoader:
         document: str = ""
 
         if load_text:
-            if self.docling_service is not None:
-                document = self.docling_service.parse_to_markdown(file_path)
-            elif self.document_service is not None:
-                document = self.document_service.parse_to_markdown(file_path)
-            else:
-                document = ""  # Document service not available
+            document = await self.load_text_from_pdf_locally(file_path)
 
         if load_images:
             image_paths = await self.get_page_images_from_pdf_async(file_path, temp_dir)
 
         return document, image_paths
+
+    async def load_text_from_pdf_locally(self, file_path: str) -> str:
+        return await asyncio.to_thread(self._extract_text_from_pdf, file_path)
+
+    @staticmethod
+    def _extract_text_from_pdf(file_path: str) -> str:
+        texts: List[str] = []
+        with pdfplumber.open(file_path) as pdf:
+            for idx, page in enumerate(pdf.pages):
+                page_text = f"## Page {idx + 1}\n"
+                page_text += page.extract_text()
+                texts.append(page_text)
+        return "\n\n".join(texts)
 
     async def load_text(self, file_path: str) -> str:
         with open(file_path, "r") as file:
