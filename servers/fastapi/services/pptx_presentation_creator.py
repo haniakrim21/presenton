@@ -106,6 +106,24 @@ class PptxPresentationCreator:
                             )
                             each_shape.picture.is_network = False
                             continue
+                        
+                        # Handle HTTP URLs that point to local files (from Next.js server)
+                        # Example: http://127.0.0.1:40001/home/user/.config/presenton/images/file.png
+                        # Should become: /home/user/.config/presenton/images/file.png
+                        if image_path.startswith('http://') or image_path.startswith('https://'):
+                            # Extract the path after the domain
+                            # Format: http://domain:port/actual/file/path
+                            parts = image_path.split('/', 3)  # ['http:', '', 'domain:port', 'actual/file/path']
+                            if len(parts) >= 4:
+                                # Get the part after the domain and URL-decode it
+                                potential_path = '/' + unquote(parts[3])
+                                # Check if it's an absolute file path
+                                if os.path.isabs(potential_path) and os.path.exists(potential_path):
+                                    each_shape.picture.path = potential_path
+                                    each_shape.picture.is_network = False
+                                    print(f"[PPTX] Converted HTTP URL to local path: {image_path} -> {potential_path}")
+                                    continue
+                        
                         image_urls.append(image_path)
                         models_with_network_asset.append(each_shape)
 
@@ -149,6 +167,24 @@ class PptxPresentationCreator:
                             )
                             each_shape.picture.is_network = False
                             continue
+                        
+                        # Handle HTTP URLs that point to local files (from Next.js server)
+                        # Example: http://127.0.0.1:40001/home/user/.config/presenton/images/file.png
+                        # Should become: /home/user/.config/presenton/images/file.png
+                        if image_path.startswith('http://') or image_path.startswith('https://'):
+                            # Extract the path after the domain
+                            # Format: http://domain:port/actual/file/path
+                            parts = image_path.split('/', 3)  # ['http:', '', 'domain:port', 'actual/file/path']
+                            if len(parts) >= 4:
+                                # Get the part after the domain and URL-decode it
+                                potential_path = '/' + unquote(parts[3])
+                                # Check if it's an absolute file path
+                                if os.path.isabs(potential_path) and os.path.exists(potential_path):
+                                    each_shape.picture.path = potential_path
+                                    each_shape.picture.is_network = False
+                                    print(f"[PPTX] Converted HTTP URL to local path: {image_path} -> {potential_path}")
+                                    continue
+                        
                         image_urls.append(image_path)
                         models_with_network_asset.append(each_shape)
 
@@ -241,8 +277,8 @@ class PptxPresentationCreator:
             # Format: http://domain:port/actual/file/path
             parts = image_path.split('/', 3)  # ['http:', '', 'domain:port', 'actual/file/path']
             if len(parts) >= 4:
-                # Get the part after the domain
-                potential_path = '/' + parts[3]
+                # Get the part after the domain and URL-decode it
+                potential_path = '/' + unquote(parts[3])
                 # Check if it's an absolute file path
                 if os.path.isabs(potential_path) and os.path.exists(potential_path):
                     image_path = potential_path
