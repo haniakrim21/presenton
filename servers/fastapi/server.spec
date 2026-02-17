@@ -45,7 +45,7 @@ a = Analysis(
     ] + hiddenimports_fastembed + hiddenimports_fastembed_vs + hiddenimports_onnx + hiddenimports_pptx + hiddenimports_greenlet + hiddenimports_docling + hiddenimports_docling_core + hiddenimports_docling_parse + hiddenimports_docling_ibm,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['runtime_hook_docling.py'],
     excludes=excludes,
     noarchive=False,
     optimize=0,
