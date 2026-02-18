@@ -9,8 +9,8 @@ datas_onnx, binaries_onnx, hiddenimports_onnx = collect_all('onnxruntime')
 # Collect python-pptx templates and data files
 datas_pptx, binaries_pptx, hiddenimports_pptx = collect_all('pptx')
 
-# Collect docx2txt (DOCX text extraction on Windows)
-datas_docx2txt, binaries_docx2txt, hiddenimports_docx2txt = collect_all('docx2txt')
+# Collect docx2everything (DOCX/Markdown extraction on Windows)
+datas_docx2everything, binaries_docx2everything, hiddenimports_docx2everything = collect_all('docx2everything')
 
 # Collect greenlet - only installed on macOS (via pyproject.toml)
 # collect_all returns empty lists if package not installed, so safe to call always
@@ -33,12 +33,12 @@ excludes = []
 a = Analysis(
     ['server.py'],
     pathex=[],
-    binaries=binaries_fastembed + binaries_fastembed_vs + binaries_onnx + binaries_pptx + binaries_docx2txt + binaries_greenlet + binaries_docling + binaries_docling_core + binaries_docling_parse + binaries_docling_ibm + binaries_docx,
+    binaries=binaries_fastembed + binaries_fastembed_vs + binaries_onnx + binaries_pptx + binaries_docx2everything + binaries_greenlet + binaries_docling + binaries_docling_core + binaries_docling_parse + binaries_docling_ibm + binaries_docx,
     datas=[
         ('assets', 'assets'),
         ('fastembed_cache', 'fastembed_cache'),
         ('static', 'static'),
-    ] + datas_fastembed + datas_fastembed_vs + datas_onnx + datas_pptx + datas_docx2txt + datas_greenlet + datas_docling + datas_docling_core + datas_docling_parse + datas_docling_ibm + datas_docx,
+    ] + datas_fastembed + datas_fastembed_vs + datas_onnx + datas_pptx + datas_docx2everything + datas_greenlet + datas_docling + datas_docling_core + datas_docling_parse + datas_docling_ibm + datas_docx,
     hiddenimports=[
         'aiosqlite',
         'sqlite3',
@@ -47,7 +47,7 @@ a = Analysis(
         'greenlet',
         'greenlet._greenlet',
         'importlib.metadata',
-    ] + hiddenimports_fastembed + hiddenimports_fastembed_vs + hiddenimports_onnx + hiddenimports_pptx + hiddenimports_docx2txt + hiddenimports_greenlet + hiddenimports_docling + hiddenimports_docling_core + hiddenimports_docling_parse + hiddenimports_docling_ibm + hiddenimports_docx,
+    ] + hiddenimports_fastembed + hiddenimports_fastembed_vs + hiddenimports_onnx + hiddenimports_pptx + hiddenimports_docx2everything + hiddenimports_greenlet + hiddenimports_docling + hiddenimports_docling_core + hiddenimports_docling_parse + hiddenimports_docling_ibm + hiddenimports_docx,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=['runtime_hook_docling.py'],

@@ -6,7 +6,7 @@ No subprocess, no external runtimes, MSIX/Appx safe.
 import os
 from typing import List, Optional
 
-import docx2txt
+import docx2everything
 import pdfplumber
 from pptx import Presentation
 
@@ -62,16 +62,17 @@ class LightweightDocumentConverter:
     
     def _convert_docx(self, path: str) -> str:
         """
-        Extract text from DOCX using docx2txt (pure Python; supports links, headers, footers).
+        Extract markdown from DOCX using docx2everything (no images).
 
         Args:
             path: Path to DOCX file
 
         Returns:
-            Extracted text (plain text, newlines preserved)
+            Extracted markdown (no images)
         """
-        result = docx2txt.process(path)
-        return result if result else ""
+        # Use the correct API: process_to_markdown(path) without img_dir extracts markdown without images
+        markdown = docx2everything.process_to_markdown(path)
+        return markdown if markdown else ""
     
     def _convert_pptx(self, path: str) -> str:
         """
