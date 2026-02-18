@@ -24,17 +24,21 @@ datas_docling_core, binaries_docling_core, hiddenimports_docling_core = collect_
 datas_docling_parse, binaries_docling_parse, hiddenimports_docling_parse = collect_all('docling-parse')
 datas_docling_ibm, binaries_docling_ibm, hiddenimports_docling_ibm = collect_all('docling-ibm-models')
 
+# Collect python-docx (dependency of docling) - needed for Word document processing on Linux/macOS
+# collect_all returns empty lists if package not installed, so safe to call conditionally
+datas_docx, binaries_docx, hiddenimports_docx = collect_all('docx')
+
 excludes = []
 
 a = Analysis(
     ['server.py'],
     pathex=[],
-    binaries=binaries_fastembed + binaries_fastembed_vs + binaries_onnx + binaries_pptx + binaries_docx2txt + binaries_greenlet + binaries_docling + binaries_docling_core + binaries_docling_parse + binaries_docling_ibm,
+    binaries=binaries_fastembed + binaries_fastembed_vs + binaries_onnx + binaries_pptx + binaries_docx2txt + binaries_greenlet + binaries_docling + binaries_docling_core + binaries_docling_parse + binaries_docling_ibm + binaries_docx,
     datas=[
         ('assets', 'assets'),
         ('fastembed_cache', 'fastembed_cache'),
         ('static', 'static'),
-    ] + datas_fastembed + datas_fastembed_vs + datas_onnx + datas_pptx + datas_docx2txt + datas_greenlet + datas_docling + datas_docling_core + datas_docling_parse + datas_docling_ibm,
+    ] + datas_fastembed + datas_fastembed_vs + datas_onnx + datas_pptx + datas_docx2txt + datas_greenlet + datas_docling + datas_docling_core + datas_docling_parse + datas_docling_ibm + datas_docx,
     hiddenimports=[
         'aiosqlite',
         'sqlite3',
@@ -43,7 +47,7 @@ a = Analysis(
         'greenlet',
         'greenlet._greenlet',
         'importlib.metadata',
-    ] + hiddenimports_fastembed + hiddenimports_fastembed_vs + hiddenimports_onnx + hiddenimports_pptx + hiddenimports_docx2txt + hiddenimports_greenlet + hiddenimports_docling + hiddenimports_docling_core + hiddenimports_docling_parse + hiddenimports_docling_ibm,
+    ] + hiddenimports_fastembed + hiddenimports_fastembed_vs + hiddenimports_onnx + hiddenimports_pptx + hiddenimports_docx2txt + hiddenimports_greenlet + hiddenimports_docling + hiddenimports_docling_core + hiddenimports_docling_parse + hiddenimports_docling_ibm + hiddenimports_docx,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=['runtime_hook_docling.py'],

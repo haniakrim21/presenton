@@ -6,10 +6,15 @@ from docling.document_converter import (
 )
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.datamodel.base_models import InputFormat
+from utils.path_helpers import patch_python_docx_templates
 
 
 class DoclingService:
     def __init__(self):
+        # Patch python-docx template path resolution before initializing converter
+        # This is safe to call in any environment (Docker, development, PyInstaller)
+        patch_python_docx_templates()
+        
         self.pipeline_options = PdfPipelineOptions()
         self.pipeline_options.do_ocr = False
 

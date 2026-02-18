@@ -142,3 +142,73 @@ def get_environment_type() -> str:
         return 'docker'
     else:
         return 'development'
+
+
+def patch_python_docx_templates():
+    """
+    Patch python-docx template path resolution for PyInstaller bundles.
+    
+    In PyInstaller bundles, python-docx cannot find template files using relative
+    paths from __file__. This function patches the template loading functions to
+    use sys._MEIPASS to locate templates in the bundle.
+    
+    This function is safe to call in any environment:
+    - Docker/Development: Returns immediately without patching (no-op)
+    - PyInstaller: Patches the template loading functions
+    
+    Note: This should be called before using docling service in PyInstaller bundles.
+    """
+    # Only patch if running in PyInstaller bundle
+    # This check ensures Docker and development environments are unaffected
+    if not is_pyinstaller():
+        return
+    
+    try:
+        # Import docx.parts.hdrftr - this will only succeed if python-docx is installed
+        # On Windows, python-docx might not be installed, so we catch ImportError
+        from docx.parts import hdrftr as hdrftr_module
+        
+        # Patch _default_header_xml
+        if hasattr(hdrftr_module, '_default_header_xml'):
+            _original_default_header_xml = hdrftr_module._default_header_xml
+            
+            def _patched_default_header_xml():
+                """Patched function that resolves template path correctly in PyInstaller bundle."""
+                try:
+                    template_path = os.path.join(sys._MEIPASS, 'docx', 'templates', 'default-header.xml')
+                    if os.path.exists(template_path):
+                        with open(template_path, 'rb') as f:
+                            return f.read()
+                except Exception:
+                    # If anything fails, fall back to original implementation
+                    pass
+                # Fallback to original implementation
+                return _original_default_header_xml()
+            
+            hdrftr_module._default_header_xml = _patched_default_header_xml
+        
+        # Patch _default_footer_xml
+        if hasattr(hdrftr_module, '_default_footer_xml'):
+            _original_default_footer_xml = hdrftr_module._default_footer_xml
+            
+            def _patched_default_footer_xml():
+                """Patched function that resolves template path correctly in PyInstaller bundle."""
+                try:
+                    template_path = os.path.join(sys._MEIPASS, 'docx', 'templates', 'default-footer.xml')
+                    if os.path.exists(template_path):
+                        with open(template_path, 'rb') as f:
+                            return f.read()
+                except Exception:
+                    # If anything fails, fall back to original implementation
+                    pass
+                return _original_default_footer_xml()
+            
+            hdrftr_module._default_footer_xml = _patched_default_footer_xml
+    except ImportError:
+        # python-docx is not installed (e.g., on Windows)
+        # This is expected and safe to ignore
+        pass
+    except Exception:
+        # Any other error - log it but don't crash
+        # The original code might still work without the patch
+        pass
