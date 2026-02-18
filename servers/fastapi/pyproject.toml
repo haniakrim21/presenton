@@ -22,7 +22,7 @@ dependencies = [
     "nltk>=3.9.1",
     "openai>=1.98.0",
     "pathvalidate>=3.3.1",
-    "pdfplumber>=0.11.7; sys_platform == 'win32'",
+    "pdfplumber>=0.11.7",
     # Platform-specific: docx2txt for DOCX text extraction on Windows
     "docx2txt>=0.9; sys_platform == 'win32'",
     "pyinstaller>=6.18.0",
