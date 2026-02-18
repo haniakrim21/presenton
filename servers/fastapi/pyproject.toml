@@ -14,7 +14,7 @@ dependencies = [
     # Platform-specific: docling for Linux/macOS only
     "docling>=2.43.0; sys_platform != 'win32'",
     "fastapi[standard]>=0.116.1",
-    "fastembed-vectorstore>=0.4.2",
+    "fastembed-vectorstore>=0.5.2",
     "fastmcp>=2.11.0",
     "google-genai>=1.28.0",
     # Platform-specific: greenlet for macOS only (critical for SQLAlchemy async)

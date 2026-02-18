@@ -56,7 +56,6 @@ const config = {
     icon: "build/icon.ico",
     artifactName: "Presenton-${version}.${ext}",
     executableName: "Presenton",
-    productName: "Presenton",
   },
   appx: {
     identityName: "PresentonAI.Presenton",
