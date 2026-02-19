@@ -50,6 +50,29 @@ import uuid
 BLANK_SLIDE_LAYOUT = 6
 
 
+def _http_url_to_local_path(image_path: str) -> Optional[str]:
+    """
+    If image_path is an HTTP(S) URL that actually points to a local file path
+    (e.g. http://127.0.0.1:40001/C:/Users/.../image.png or http://host/home/user/...),
+    return the resolved absolute path; otherwise return None.
+    """
+    if not (image_path.startswith("http://") or image_path.startswith("https://")):
+        return None
+    parts = image_path.split("/", 3)
+    if len(parts) < 4:
+        return None
+    decoded = unquote(parts[3])
+    # Windows: path after domain is like "C:/Users/..." or "D:/..."
+    if len(decoded) >= 2 and decoded[1] == ":":
+        potential_path = os.path.normpath(decoded)
+    else:
+        # Unix: path after domain is like "home/user/..." -> /home/user/...
+        potential_path = "/" + decoded if not decoded.startswith("/") else decoded
+    if os.path.isabs(potential_path) and os.path.exists(potential_path):
+        return potential_path
+    return None
+
+
 class PptxPresentationCreator:
     def __init__(self, ppt_model: PptxPresentationModel, temp_dir: str):
         self._temp_dir = temp_dir
@@ -169,21 +192,13 @@ class PptxPresentationCreator:
                             continue
                         
                         # Handle HTTP URLs that point to local files (from Next.js server)
-                        # Example: http://127.0.0.1:40001/home/user/.config/presenton/images/file.png
-                        # Should become: /home/user/.config/presenton/images/file.png
-                        if image_path.startswith('http://') or image_path.startswith('https://'):
-                            # Extract the path after the domain
-                            # Format: http://domain:port/actual/file/path
-                            parts = image_path.split('/', 3)  # ['http:', '', 'domain:port', 'actual/file/path']
-                            if len(parts) >= 4:
-                                # Get the part after the domain and URL-decode it
-                                potential_path = '/' + unquote(parts[3])
-                                # Check if it's an absolute file path
-                                if os.path.isabs(potential_path) and os.path.exists(potential_path):
-                                    each_shape.picture.path = potential_path
-                                    each_shape.picture.is_network = False
-                                    print(f"[PPTX] Converted HTTP URL to local path: {image_path} -> {potential_path}")
-                                    continue
+                        # e.g. http://127.0.0.1:40001/C:/Users/.../image.png (Windows) or http://host/home/user/... (Unix)
+                        local_path = _http_url_to_local_path(image_path)
+                        if local_path is not None:
+                            each_shape.picture.path = local_path
+                            each_shape.picture.is_network = False
+                            print(f"[PPTX] Converted HTTP URL to local path: {image_path} -> {local_path}")
+                            continue
                         
                         image_urls.append(image_path)
                         models_with_network_asset.append(each_shape)
@@ -269,19 +284,10 @@ class PptxPresentationCreator:
     def add_picture(self, slide: Slide, picture_model: PptxPictureBoxModel):
         image_path = picture_model.picture.path
         
-        # Handle HTTP URLs that point to local files (from Next.js server)
-        # Example: http://127.0.0.1:40002/home/user/.config/presenton/images/file.png
-        # Should become: /home/user/.config/presenton/images/file.png
-        if image_path.startswith('http://') or image_path.startswith('https://'):
-            # Extract the path after the domain
-            # Format: http://domain:port/actual/file/path
-            parts = image_path.split('/', 3)  # ['http:', '', 'domain:port', 'actual/file/path']
-            if len(parts) >= 4:
-                # Get the part after the domain and URL-decode it
-                potential_path = '/' + unquote(parts[3])
-                # Check if it's an absolute file path
-                if os.path.isabs(potential_path) and os.path.exists(potential_path):
-                    image_path = potential_path
+        # Handle HTTP URLs that point to local files (e.g. Windows: http://host/C:/Users/.../image.png)
+        resolved = _http_url_to_local_path(image_path)
+        if resolved is not None:
+            image_path = resolved
         
         print(f"[PPTX] Adding picture: {image_path}")
         print(f"[PPTX] File exists: {os.path.exists(image_path)}")
