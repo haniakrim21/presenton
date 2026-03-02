@@ -28,7 +28,7 @@ import { toast } from "sonner";
 
 import Announcement from "@/components/Announcement";
 import { PptxPresentationModel } from "@/types/pptx_models";
-import HeaderNav from "../../components/HeaderNab";
+import { LayoutDashboard, Settings } from "lucide-react";
 import PDFIMAGE from "@/public/pdf.svg";
 import PPTXIMAGE from "@/public/pptx.svg";
 import Image from "next/image";
@@ -52,6 +52,7 @@ const Header = ({
   const pathname = usePathname();
   const dispatch = useDispatch();
 
+  const canChangeKeys = useSelector((state: RootState) => state.userConfig.can_change_keys);
 
   const { presentationData, isStreaming } = useSelector(
     (state: RootState) => state.presentationGeneration
@@ -318,13 +319,30 @@ const Header = ({
 
 
             <MenuItems mobile={false} />
-            <HeaderNav />
+            <Link href="/dashboard" prefetch={false} className="flex items-center gap-2 px-3 py-2 text-white hover:bg-primary/80 rounded-md transition-colors outline-none">
+              <LayoutDashboard className="w-5 h-5" />
+              <span className="text-sm font-medium font-inter">Dashboard</span>
+            </Link>
+            {canChangeKeys && (
+              <Link href="/settings" prefetch={false} className="flex items-center gap-2 px-3 py-2 text-white hover:bg-primary/80 rounded-md transition-colors outline-none">
+                <Settings className="w-5 h-5" />
+                <span className="text-sm font-medium font-inter">Settings</span>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu */}
           <div className="lg:hidden flex items-center gap-4">
-            <HeaderNav />
-
+            <Link href="/dashboard" prefetch={false} className="flex items-center gap-2 px-3 py-2 text-white hover:bg-primary/80 rounded-md transition-colors outline-none">
+              <LayoutDashboard className="w-5 h-5" />
+              <span className="text-sm font-medium font-inter">Dashboard</span>
+            </Link>
+            {canChangeKeys && (
+              <Link href="/settings" prefetch={false} className="flex items-center gap-2 px-3 py-2 text-white hover:bg-primary/80 rounded-md transition-colors outline-none">
+                <Settings className="w-5 h-5" />
+                <span className="text-sm font-medium font-inter">Settings</span>
+              </Link>
+            )}
           </div>
         </Wrapper>
 
