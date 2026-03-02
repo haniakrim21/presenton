@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { clearPresentationData } from "@/store/slices/presentationGeneration";
 import { PresentationGenerationApi } from "../../services/api/presentation-generation";
-import { Template, LoadingState, TABS } from "../types/index";
+import { Template, LoadingState } from "../types/index";
 import { MixpanelEvent, trackEvent } from "@/utils/mixpanel";
 import { TemplateLayoutsWithSettings } from "@/app/presentation-templates/utils";
 import { getCustomTemplateDetails } from "@/app/hooks/useCustomTemplates";
@@ -19,8 +19,7 @@ const DEFAULT_LOADING_STATE: LoadingState = {
 export const usePresentationGeneration = (
   presentationId: string | null,
   outlines: { content: string }[] | null,
-  selectedTemplate: TemplateLayoutsWithSettings | string | null,
-  setActiveTab: (tab: string) => void
+  selectedTemplate: TemplateLayoutsWithSettings | string | null
 ) => {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -70,10 +69,6 @@ export const usePresentationGeneration = (
   }
 
   const handleSubmit = useCallback(async () => {
-    if (!selectedTemplate) {
-      setActiveTab(TABS.LAYOUTS);
-      return;
-    }
     if (!validateInputs()) return;
 
     setLoadingState({
@@ -84,6 +79,7 @@ export const usePresentationGeneration = (
     });
 
     try {
+      if (!selectedTemplate) return;
       let layout;
 
       // Check if it's a custom template (string = presentationId)

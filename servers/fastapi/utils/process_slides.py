@@ -12,6 +12,7 @@ from utils.dict_utils import get_dict_at_path, get_dict_paths_with_key, set_dict
 async def process_slide_and_fetch_assets(
     image_generation_service: ImageGenerationService,
     slide: SlideModel,
+    icon_style: str = "bold",
 ) -> List[ImageAsset]:
 
     async_tasks = []
@@ -32,7 +33,9 @@ async def process_slide_and_fetch_assets(
     for icon_path in icon_paths:
         __icon_query__parent = get_dict_at_path(slide.content, icon_path)
         async_tasks.append(
-            ICON_FINDER_SERVICE.search_icons(__icon_query__parent["__icon_query__"])
+            ICON_FINDER_SERVICE.search_icons(
+                __icon_query__parent["__icon_query__"], style=icon_style
+            )
         )
 
     results = await asyncio.gather(*async_tasks)
@@ -66,6 +69,7 @@ async def process_old_and_new_slides_and_fetch_assets(
     image_generation_service: ImageGenerationService,
     old_slide_content: dict,
     new_slide_content: dict,
+    icon_style: str = "bold",
 ) -> List[ImageAsset]:
     # Finds all old images
     old_image_dict_paths = get_dict_paths_with_key(
@@ -141,7 +145,9 @@ async def process_old_and_new_slides_and_fetch_assets(
             continue
 
         async_icon_fetch_tasks.append(
-            ICON_FINDER_SERVICE.search_icons(new_icon["__icon_query__"])
+            ICON_FINDER_SERVICE.search_icons(
+                new_icon["__icon_query__"], style=icon_style
+            )
         )
         new_icons_fetch_status.append(True)
 

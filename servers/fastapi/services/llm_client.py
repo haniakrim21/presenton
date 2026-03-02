@@ -66,6 +66,7 @@ from utils.set_env import (
 from utils.llm_provider import get_llm_provider, get_model
 from utils.parsers import parse_bool_or_none
 from utils.schema_utils import (
+    convert_prefix_items_to_items,
     ensure_strict_json_schema,
     flatten_json_schema,
     remove_titles_from_schema,
@@ -690,7 +691,7 @@ class LLMClient:
         depth: int = 0,
     ) -> dict | None:
         client: AsyncOpenAI = self._client
-        response_schema = response_format
+        response_schema = convert_prefix_items_to_items(response_format)
         all_tools = [*tools] if tools else None
 
         use_tool_calls_for_structured_output = (
@@ -1587,7 +1588,7 @@ class LLMClient:
     ) -> AsyncGenerator[str, None]:
         client: AsyncOpenAI = self._client
 
-        response_schema = response_format
+        response_schema = convert_prefix_items_to_items(response_format)
         all_tools = [*tools] if tools else None
 
         use_tool_calls_for_structured_output = (
@@ -1792,7 +1793,7 @@ class LLMClient:
             - Robust multi-tool recursive execution
         """
         client: AsyncOpenAI = self._client
-        response_schema = response_format
+        response_schema = convert_prefix_items_to_items(response_format)
         # Apply strict schema once at root
         if strict and depth == 0:
             response_schema = ensure_strict_json_schema(

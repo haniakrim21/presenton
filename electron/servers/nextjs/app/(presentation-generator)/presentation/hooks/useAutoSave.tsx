@@ -83,7 +83,30 @@ export const useAutoSave = ({
         };
     }, [presentationData, enabled, debouncedSave,isLoading, isStreaming, isLayoutLoading]);
     
+    const saveNow = useCallback(async () => {
+        if (!presentationData || isSaving) return;
+
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+            saveTimeoutRef.current = null;
+        }
+
+        const currentDataString = JSON.stringify(presentationData);
+        if (currentDataString === lastSavedDataRef.current) return;
+
+        try {
+            setIsSaving(true);
+            await PresentationGenerationApi.updatePresentationContent(presentationData);
+            lastSavedDataRef.current = currentDataString;
+        } catch (error) {
+            console.error('Save failed:', error);
+        } finally {
+            setIsSaving(false);
+        }
+    }, [presentationData, isSaving]);
+
     return {
         isSaving,
+        saveNow,
     };
 }; 

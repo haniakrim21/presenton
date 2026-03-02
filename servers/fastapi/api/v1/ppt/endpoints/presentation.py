@@ -32,6 +32,8 @@ from models.presentation_with_slides import (
 )
 from models.sql.template import TemplateModel
 
+from models.sql.knowledge_base import KBDocument
+from services.document_rag_service import DocumentRAGService
 from services.documents_loader import DocumentsLoader
 from services.webhook_service import WebhookService
 from utils.get_layout_by_name import get_layout_by_name
@@ -132,6 +134,7 @@ async def create_presentation(
     n_slides: Annotated[int, Body()],
     language: Annotated[str, Body()],
     file_paths: Annotated[Optional[List[str]], Body()] = None,
+    kb_document_ids: Annotated[Optional[List[str]], Body()] = None,
     tone: Annotated[Tone, Body()] = Tone.DEFAULT,
     verbosity: Annotated[Verbosity, Body()] = Verbosity.STANDARD,
     instructions: Annotated[Optional[str], Body()] = None,
@@ -147,6 +150,16 @@ async def create_presentation(
             detail="Number of slides cannot be less than 3 if table of contents is included",
         )
 
+    # Resolve KB document IDs to file paths and merge
+    all_file_paths = list(file_paths) if file_paths else []
+    if kb_document_ids:
+        kb_uuids = [uuid.UUID(doc_id) for doc_id in kb_document_ids]
+        result = await sql_session.execute(
+            select(KBDocument).where(KBDocument.id.in_(kb_uuids))
+        )
+        kb_docs = result.scalars().all()
+        all_file_paths.extend([doc.file_path for doc in kb_docs])
+
     presentation_id = uuid.uuid4()
 
     presentation = PresentationModel(
@@ -154,7 +167,7 @@ async def create_presentation(
         content=content,
         n_slides=n_slides,
         language=language,
-        file_paths=file_paths,
+        file_paths=all_file_paths if all_file_paths else None,
         tone=tone.value,
         verbosity=verbosity.value,
         instructions=instructions,
@@ -283,6 +296,19 @@ async def stream_presentation(
         # These tasks will be gathered and awaited after all slides are generated
         async_assets_generation_tasks = []
 
+        # Ingest documents into RAG if available
+        rag_service = None
+        if presentation.file_paths:
+            temp_dir = TEMP_FILE_SERVICE.create_temp_dir()
+            documents_loader = DocumentsLoader(file_paths=presentation.file_paths)
+            await documents_loader.load_documents(temp_dir)
+            documents = documents_loader.documents
+            if documents:
+                rag_service = DocumentRAGService(session_id=f"{id}_stream")
+                file_names = [os.path.basename(f) for f in presentation.file_paths]
+                n_chunks = await rag_service.ingest_documents(documents, file_names)
+                print(f"RAG: Ingested {n_chunks} chunks from {len(documents)} documents")
+
         slides: List[SlideModel] = []
         yield SSEResponse(
             event="response",
@@ -290,6 +316,11 @@ async def stream_presentation(
         ).to_string()
         for i, slide_layout_index in enumerate(structure.slides):
             slide_layout = layout.slides[slide_layout_index]
+
+            # Retrieve per-slide RAG context
+            slide_context = None
+            if rag_service:
+                slide_context = await rag_service.query_for_slide(outline.slides[i].content)
 
             try:
                 slide_content = await get_slide_content_from_type_and_outline(
@@ -299,8 +330,11 @@ async def stream_presentation(
                     presentation.tone,
                     presentation.verbosity,
                     presentation.instructions,
+                    additional_context=slide_context,
                 )
             except HTTPException as e:
+                if rag_service:
+                    await rag_service.cleanup()
                 yield SSEErrorResponse(detail=e.detail).to_string()
                 return
 
@@ -331,6 +365,10 @@ async def stream_presentation(
             event="response",
             data=json.dumps({"type": "chunk", "chunk": " ] }"}),
         ).to_string()
+
+        # Cleanup RAG collection
+        if rag_service:
+            await rag_service.cleanup()
 
         generated_assets_lists = await asyncio.gather(*async_assets_generation_tasks)
         generated_assets = []
@@ -366,6 +404,7 @@ async def update_presentation(
     id: Annotated[uuid.UUID, Body()],
     n_slides: Annotated[Optional[int], Body()] = None,
     title: Annotated[Optional[str], Body()] = None,
+    theme: Annotated[Optional[str], Body()] = None,
     slides: Annotated[Optional[List[SlideModel]], Body()] = None,
     sql_session: AsyncSession = Depends(get_async_session),
 ):
@@ -378,8 +417,10 @@ async def update_presentation(
         presentation_update_dict["n_slides"] = n_slides
     if title:
         presentation_update_dict["title"] = title
+    if theme is not None:
+        presentation_update_dict["theme"] = theme
 
-    if n_slides or title:
+    if n_slides or title or theme is not None:
         presentation.sqlmodel_update(presentation_update_dict)
 
     if slides:
@@ -500,6 +541,8 @@ async def generate_presentation_handler(
             using_slides_markdown = True
             request.n_slides = len(request.slides_markdown)
 
+        rag_service = None
+
         if not using_slides_markdown:
             additional_context = ""
 
@@ -510,12 +553,25 @@ async def generate_presentation_handler(
                 sql_session.add(async_status)
                 await sql_session.commit()
 
-            if request.files:
-                documents_loader = DocumentsLoader(file_paths=request.files)
+            # Merge uploaded files with KB document file paths
+            all_file_paths = list(request.files) if request.files else []
+            if request.kb_document_ids:
+                kb_uuids = [uuid.UUID(doc_id) for doc_id in request.kb_document_ids]
+                result = await sql_session.execute(
+                    select(KBDocument).where(KBDocument.id.in_(kb_uuids))
+                )
+                kb_docs = result.scalars().all()
+                all_file_paths.extend([doc.file_path for doc in kb_docs])
+
+            if all_file_paths:
+                documents_loader = DocumentsLoader(file_paths=all_file_paths)
                 await documents_loader.load_documents()
                 documents = documents_loader.documents
                 if documents:
-                    additional_context = "\n\n".join(documents)
+                    rag_service = DocumentRAGService(session_id=str(presentation_id))
+                    file_names = [os.path.basename(f) for f in all_file_paths]
+                    n_chunks = await rag_service.ingest_documents(documents, file_names)
+                    print(f"RAG: Ingested {n_chunks} chunks from {len(documents)} documents")
 
             # Finding number of slides to generate by considering table of contents
             n_slides_to_generate = request.n_slides
@@ -530,6 +586,11 @@ async def generate_presentation_handler(
                 )
                 n_slides_to_generate -= math.ceil(
                     (request.n_slides - needed_toc_count) / 10
+                )
+
+            if rag_service:
+                additional_context = await rag_service.query_for_outline(
+                    request.content, n_slides_to_generate
                 )
 
             presentation_outlines_text = ""
@@ -686,6 +747,14 @@ async def generate_presentation_handler(
 
             print(f"Generating slides from {start} to {end}")
 
+            # Retrieve per-slide RAG context if available
+            slide_contexts = [None] * (end - start)
+            if rag_service:
+                slide_contexts = await asyncio.gather(*[
+                    rag_service.query_for_slide(presentation_outlines.slides[i].content)
+                    for i in range(start, end)
+                ])
+
             # Generate contents for this batch concurrently
             content_tasks = [
                 get_slide_content_from_type_and_outline(
@@ -695,6 +764,7 @@ async def generate_presentation_handler(
                     request.tone.value,
                     request.verbosity.value,
                     request.instructions,
+                    additional_context=slide_contexts[i - start],
                 )
                 for i in range(start, end)
             ]
@@ -735,7 +805,11 @@ async def generate_presentation_handler(
         for assets_list in generated_assets_list:
             generated_assets.extend(assets_list)
 
-        # 8. Save PresentationModel and Slides
+        # 8. Cleanup RAG collection
+        if rag_service:
+            await rag_service.cleanup()
+
+        # 9. Save PresentationModel and Slides
         sql_session.add(presentation)
         sql_session.add_all(slides)
         sql_session.add_all(generated_assets)
@@ -775,6 +849,9 @@ async def generate_presentation_handler(
         return response
 
     except Exception as e:
+        if rag_service:
+            await rag_service.cleanup()
+
         if not isinstance(e, HTTPException):
             traceback.print_exc()
             e = HTTPException(status_code=500, detail="Presentation generation failed")

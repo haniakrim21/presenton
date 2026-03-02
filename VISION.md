@@ -10,7 +10,7 @@ Users should be free to choose their models. Local models. Open models. Propriet
 
 Templates and Designs are first class citizens. Users should be able to create them, modify them, package them, share them internally, and distribute them publicly. Themes and Asset packs can be configured manually.
 
-Presenton is an open source document engine, not a closed design platform. It is infrastructure for AI native visual workflows. Portable. Extensible. Model agnostic. Private by default.
+Presenton is a document engine, not a closed design platform. It is infrastructure for AI native visual workflows. Portable. Extensible. Model agnostic. Private by default.
 
 Our ambition is to become the open foundation for local, private, AI powered visual document generation.
 

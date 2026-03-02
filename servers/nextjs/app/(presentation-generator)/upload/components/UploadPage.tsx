@@ -13,11 +13,12 @@
 import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useDispatch } from "react-redux";
-import { clearOutlines, setPresentationId } from "@/store/slices/presentationGeneration";
+import { clearOutlines } from "@/store/slices/presentationGeneration";
 import { ConfigurationSelects } from "./ConfigurationSelects";
 import { PromptInput } from "./PromptInput";
 import {  LanguageType, PresentationConfig, ToneType, VerbosityType } from "../type";
 import SupportingDoc from "./SupportingDoc";
+import KBDocumentPicker from "./KBDocumentPicker";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -53,6 +54,9 @@ const UploadPage = () => {
     includeTableOfContents: false,
     includeTitleSlide: false,
     webSearch: false,
+    kbDocumentIds: [],
+    exportFormat: "pptx",
+    slidesMarkdown: null,
   });
 
   const [loadingState, setLoadingState] = useState<LoadingState>({
@@ -82,7 +86,7 @@ const UploadPage = () => {
       return false;
     }
 
-    if (!config.prompt.trim() && files.length === 0) {
+    if (!config.prompt.trim() && files.length === 0 && config.kbDocumentIds.length === 0) {
       toast.error("No Prompt or Document Provided");
       return false;
     }
@@ -145,36 +149,14 @@ const UploadPage = () => {
   };
 
   /**
-   * Handles direct presentation generation without documents
+   * Handles direct presentation generation without documents.
+   * Stores config in Redux and navigates to the theme selection page.
    */
   const handleDirectPresentationGeneration = async () => {
-    setLoadingState({
-      isLoading: true,
-      message: "Generating outlines...",
-      showProgress: true,
-      duration: 30,
-    });
-
-    // Use the first available layout group for direct generation
-    trackEvent(MixpanelEvent.Upload_Create_Presentation_API_Call);
-    const createResponse = await PresentationGenerationApi.createPresentation({
-      content: config?.prompt ?? "",
-      n_slides: config?.slides ? parseInt(config.slides) : null,
-      file_paths: [],
-      language: config?.language ?? "",
-      tone: config?.tone,
-      verbosity: config?.verbosity,
-      instructions: config?.instructions || null,
-      include_table_of_contents: !!config?.includeTableOfContents,
-      include_title_slide: !!config?.includeTitleSlide,
-      web_search: !!config?.webSearch,
-    });
-
-
-    dispatch(setPresentationId(createResponse.id));
-    dispatch(clearOutlines())
-    trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/outline" });
-    router.push("/outline");
+    dispatch(setPptGenUploadState({ config, files: [] }));
+    dispatch(clearOutlines());
+    trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/template" });
+    router.push("/template");
   };
 
   /**
@@ -221,6 +203,12 @@ const UploadPage = () => {
         files={[...files]}
         onFilesChange={setFiles}
         data-testid="file-upload-input"
+      />
+      <KBDocumentPicker
+        selectedIds={config.kbDocumentIds}
+        onSelectionChange={(ids) =>
+          setConfig((prev) => ({ ...prev, kbDocumentIds: ids }))
+        }
       />
       <Button
         onClick={handleGeneratePresentation}

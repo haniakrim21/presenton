@@ -2,13 +2,11 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 import { Button } from "@/components/ui/button";
-import { LoadingState, Template } from "../types/index";
-import { TemplateLayoutsWithSettings } from "@/app/presentation-templates/utils";
+import { LoadingState } from "../types/index";
 
 interface GenerateButtonProps {
   loadingState: LoadingState;
   streamState: { isStreaming: boolean; isLoading: boolean };
-  selectedTemplate: TemplateLayoutsWithSettings | string | null;
   onSubmit: () => void;
   outlineCount: number;
 }
@@ -16,7 +14,6 @@ interface GenerateButtonProps {
 const GenerateButton: React.FC<GenerateButtonProps> = ({
   loadingState,
   streamState,
-  selectedTemplate,
   outlineCount,
   onSubmit,
 }) => {
@@ -28,7 +25,6 @@ const GenerateButton: React.FC<GenerateButtonProps> = ({
   const getButtonText = () => {
     if (loadingState.isLoading) return loadingState.message;
     if (streamState.isLoading || streamState.isStreaming) return "Loading...";
-    if (!selectedTemplate) return "Select a Template";
     return "Generate Presentation";
   };
 
@@ -37,16 +33,10 @@ const GenerateButton: React.FC<GenerateButtonProps> = ({
       disabled={isDisabled}
       onClick={() => {
         if (!streamState.isLoading && !streamState.isStreaming) {
-          if (!selectedTemplate) {
-            trackEvent(MixpanelEvent.Outline_Select_Template_Button_Clicked, {
-              pathname,
-            });
-          } else {
-            trackEvent(
-              MixpanelEvent.Outline_Generate_Presentation_Button_Clicked,
-              { pathname }
-            );
-          }
+          trackEvent(
+            MixpanelEvent.Outline_Generate_Presentation_Button_Clicked,
+            { pathname }
+          );
         }
         onSubmit();
       }}

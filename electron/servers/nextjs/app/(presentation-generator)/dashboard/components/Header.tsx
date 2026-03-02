@@ -6,7 +6,7 @@ import Link from "next/link";
 import BackBtn from "@/components/BackBtn";
 import { usePathname } from "next/navigation";
 import HeaderNav from "@/app/(presentation-generator)/components/HeaderNab";
-import { Layout, FilePlus2 } from "lucide-react";
+import { Layout, FilePlus2, BookOpen } from "lucide-react";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 const Header = () => {
   const pathname = usePathname();
@@ -44,6 +44,16 @@ const Header = () => {
             >
               <Layout className="w-5 h-5" />
               <span className="text-sm font-medium font-inter">Templates</span>
+            </Link>
+            <Link
+              href="/knowledge-base"
+              prefetch={false}
+              onClick={() => trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/knowledge-base" })}
+              className="flex items-center gap-2 px-3 py-2 text-white hover:bg-primary/80 rounded-md transition-colors outline-none"
+              role="menuitem"
+            >
+              <BookOpen className="w-5 h-5" />
+              <span className="text-sm font-medium font-inter">Knowledge Base</span>
             </Link>
             <HeaderNav />
           </div>

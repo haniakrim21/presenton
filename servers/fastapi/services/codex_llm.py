@@ -22,7 +22,7 @@ from models.llm_message import (
     LLMUserMessage,
 )
 from models.llm_tool_call import OpenAIToolCall, OpenAIToolCallFunction
-from utils.schema_utils import ensure_strict_json_schema
+from utils.schema_utils import convert_prefix_items_to_items, ensure_strict_json_schema
 
 # Responses API requires flat tool format: {"type":"function","name":...,"description":...,"parameters":...}
 RESPONSE_SCHEMA_NAME = "ResponseSchema"
@@ -292,7 +292,7 @@ class CodexLLMAdapter:
             f"Codex stream_structured: model={model} depth={depth} strict={strict} "
             f"user_tools={user_tools_count} (always adding ResponseSchema tool for structured JSON)"
         )
-        schema = ensure_strict_json_schema(response_format, path=(), root=response_format) if strict and depth == 0 else response_format
+        schema = ensure_strict_json_schema(response_format, path=(), root=response_format) if strict and depth == 0 else convert_prefix_items_to_items(response_format)
         response_schema_tool = {
             "type": "function",
             "name": RESPONSE_SCHEMA_NAME,

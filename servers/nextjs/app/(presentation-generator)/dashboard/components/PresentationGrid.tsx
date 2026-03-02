@@ -107,6 +107,7 @@ export const PresentationGrid = ({
             title={presentation.title}
             created_at={presentation.created_at}
             slide={presentation.slides[0]}
+            theme={presentation.theme}
             onDeleted={onPresentationDeleted}
           />
         ))}

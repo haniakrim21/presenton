@@ -160,8 +160,18 @@ import TitleDescriptionSixChartsGridLayout, { Schema as TitleDescriptionSixChart
 import TitleDescriptionSixChartsFourMetricsLayout, { Schema as TitleDescriptionSixChartsFourMetricsSchema, layoutId as TitleDescriptionSixChartsFourMetricsId, layoutName as TitleDescriptionSixChartsFourMetricsName, layoutDescription as TitleDescriptionSixChartsFourMetricsDesc } from './neo-swift/TitleDescriptionSixChartsFourMetrics';
 import TitleDescriptionFourChartsSixBulletsLayout, { Schema as TitleDescriptionFourChartsSixBulletsSchema, layoutId as TitleDescriptionFourChartsSixBulletsId, layoutName as TitleDescriptionFourChartsSixBulletsName, layoutDescription as TitleDescriptionFourChartsSixBulletsDesc } from './neo-swift/TitleDescriptionFourChartsSixBullets';
 
-
-
+// New template groups (barrel imports)
+import { neoPulseTemplates, settings as neoPulseSettings } from './neo-pulse';
+import { neoGridTemplates, settings as neoGridSettings } from './neo-grid';
+import { neoBoldTemplates, settings as neoBoldSettings } from './neo-bold';
+import { neoMinimalTemplates, settings as neoMinimalSettings } from './neo-minimal';
+import { neoDarkTemplates, settings as neoDarkSettings } from './neo-dark';
+import { neoExecutiveTemplates, settings as neoExecutiveSettings } from './neo-executive';
+import { neoVibrantTemplates, settings as neoVibrantSettings } from './neo-vibrant';
+import { neoEditorialTemplates, settings as neoEditorialSettings } from './neo-editorial';
+import { neoDataTemplates, settings as neoDataSettings } from './neo-data';
+import { neoCleanTemplates, settings as neoCleanSettings } from './neo-clean';
+import { compositeTemplateDefs } from './composite-template-defs';
 
 
 
@@ -350,9 +360,54 @@ export const allLayouts: TemplateWithData[] = [
     ...modernTemplates,
     ...standardTemplates,
     ...swiftTemplates,
-
+    ...neoPulseTemplates,
+    ...neoGridTemplates,
+    ...neoBoldTemplates,
+    ...neoMinimalTemplates,
+    ...neoDarkTemplates,
+    ...neoExecutiveTemplates,
+    ...neoVibrantTemplates,
+    ...neoEditorialTemplates,
+    ...neoDataTemplates,
+    ...neoCleanTemplates,
 ];
 
+// Map group IDs to their layout arrays for composite template resolution
+const templateArrayMap: Record<string, TemplateWithData[]> = {
+    'neo-general': neoGeneralTemplates,
+    'neo-modern': neoModernTemplates,
+    'neo-standard': neoStandardTemplates,
+    'neo-swift': neoSwiftTemplates,
+    'general': generalTemplates,
+    'modern': modernTemplates,
+    'standard': standardTemplates,
+    'swift': swiftTemplates,
+    'neo-pulse': neoPulseTemplates,
+    'neo-grid': neoGridTemplates,
+    'neo-bold': neoBoldTemplates,
+    'neo-minimal': neoMinimalTemplates,
+    'neo-dark': neoDarkTemplates,
+    'neo-executive': neoExecutiveTemplates,
+    'neo-vibrant': neoVibrantTemplates,
+    'neo-editorial': neoEditorialTemplates,
+    'neo-data': neoDataTemplates,
+    'neo-clean': neoCleanTemplates,
+};
+
+// Build 90 composite use-case templates from definitions
+const compositeTemplates: TemplateLayoutsWithSettings[] = compositeTemplateDefs.map(def => ({
+    id: def.id,
+    name: def.name,
+    description: def.description,
+    settings: { description: def.description, ordered: false, default: false } as TemplateGroupSettings,
+    layouts: def.sourceGroups.flatMap(gid =>
+        (templateArrayMap[gid] || []).map(layout => ({
+            ...layout,
+            layoutId: `${def.id}:${layout.layoutId}`,
+            templateName: def.id,
+        }))
+    ),
+}));
 
 // TODO: Step 5: Combine all templates into a single array For UseCases (like the ones below)
 // For UseCases we need to combine all templates into a single array with settings
@@ -413,7 +468,77 @@ export const templates: TemplateLayoutsWithSettings[] = [
         settings: swiftSettings as TemplateGroupSettings,
         layouts: swiftTemplates,
     },
-
+    {
+        id: "neo-pulse",
+        name: "Neo Pulse",
+        description: neoPulseSettings.description,
+        settings: neoPulseSettings as TemplateGroupSettings,
+        layouts: neoPulseTemplates,
+    },
+    {
+        id: "neo-grid",
+        name: "Neo Grid",
+        description: neoGridSettings.description,
+        settings: neoGridSettings as TemplateGroupSettings,
+        layouts: neoGridTemplates,
+    },
+    {
+        id: "neo-bold",
+        name: "Neo Bold",
+        description: neoBoldSettings.description,
+        settings: neoBoldSettings as TemplateGroupSettings,
+        layouts: neoBoldTemplates,
+    },
+    {
+        id: "neo-minimal",
+        name: "Neo Minimal",
+        description: neoMinimalSettings.description,
+        settings: neoMinimalSettings as TemplateGroupSettings,
+        layouts: neoMinimalTemplates,
+    },
+    {
+        id: "neo-dark",
+        name: "Neo Dark",
+        description: neoDarkSettings.description,
+        settings: neoDarkSettings as TemplateGroupSettings,
+        layouts: neoDarkTemplates,
+    },
+    {
+        id: "neo-executive",
+        name: "Neo Executive",
+        description: neoExecutiveSettings.description,
+        settings: neoExecutiveSettings as TemplateGroupSettings,
+        layouts: neoExecutiveTemplates,
+    },
+    {
+        id: "neo-vibrant",
+        name: "Neo Vibrant",
+        description: neoVibrantSettings.description,
+        settings: neoVibrantSettings as TemplateGroupSettings,
+        layouts: neoVibrantTemplates,
+    },
+    {
+        id: "neo-editorial",
+        name: "Neo Editorial",
+        description: neoEditorialSettings.description,
+        settings: neoEditorialSettings as TemplateGroupSettings,
+        layouts: neoEditorialTemplates,
+    },
+    {
+        id: "neo-data",
+        name: "Neo Data",
+        description: neoDataSettings.description,
+        settings: neoDataSettings as TemplateGroupSettings,
+        layouts: neoDataTemplates,
+    },
+    {
+        id: "neo-clean",
+        name: "Neo Clean",
+        description: neoCleanSettings.description,
+        settings: neoCleanSettings as TemplateGroupSettings,
+        layouts: neoCleanTemplates,
+    },
+    ...compositeTemplates,
 ];
 
 // Helper to get templates by group ID

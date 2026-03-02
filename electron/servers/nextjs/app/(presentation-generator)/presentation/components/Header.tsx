@@ -6,6 +6,7 @@ import {
   Loader2,
   Redo2,
   Undo2,
+  Save,
 
 } from "lucide-react";
 import React, { useState } from "react";
@@ -42,9 +43,13 @@ import { getApiUrl } from "@/utils/api";
 const Header = ({
   presentation_id,
   currentSlide,
+  onSave,
+  isSaving,
 }: {
   presentation_id: string;
   currentSlide?: number;
+  onSave?: () => void;
+  isSaving?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
@@ -243,6 +248,21 @@ const Header = ({
         </ToolTip>
 
       </div>
+
+      {/* Save Button */}
+      <ToolTip content="Save">
+        <button
+          disabled={isSaving || isStreaming}
+          className="text-white disabled:opacity-50"
+          onClick={() => onSave?.()}
+        >
+          {isSaving ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            <Save className="w-6 h-6" />
+          )}
+        </button>
+      </ToolTip>
 
       {/* Present Button */}
       <Button

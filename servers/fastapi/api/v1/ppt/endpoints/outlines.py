@@ -1,6 +1,7 @@
 import asyncio
 import json
 import math
+import os
 import traceback
 import uuid
 import dirtyjson
@@ -16,6 +17,7 @@ from models.sse_response import (
     SSEResponse,
     SSEStatusResponse,
 )
+from services.document_rag_service import DocumentRAGService
 from services.temp_file_service import TEMP_FILE_SERVICE
 from services.database import get_async_session
 from services.documents_loader import DocumentsLoader
@@ -42,12 +44,16 @@ async def stream_outlines(
         ).to_string()
 
         additional_context = ""
+        rag_service = None
         if presentation.file_paths:
             documents_loader = DocumentsLoader(file_paths=presentation.file_paths)
             await documents_loader.load_documents(temp_dir)
             documents = documents_loader.documents
             if documents:
-                additional_context = "\n\n".join(documents)
+                rag_service = DocumentRAGService(session_id=str(id))
+                file_names = [os.path.basename(f) for f in presentation.file_paths]
+                n_chunks = await rag_service.ingest_documents(documents, file_names)
+                print(f"RAG: Ingested {n_chunks} chunks from {len(documents)} documents")
 
         presentation_outlines_text = ""
 
@@ -56,6 +62,11 @@ async def stream_outlines(
             needed_toc_count = math.ceil((presentation.n_slides - 1) / 10)
             n_slides_to_generate -= math.ceil(
                 (presentation.n_slides - needed_toc_count) / 10
+            )
+
+        if rag_service:
+            additional_context = await rag_service.query_for_outline(
+                presentation.content, n_slides_to_generate
             )
 
         async for chunk in generate_ppt_outline(
@@ -102,6 +113,9 @@ async def stream_outlines(
 
         presentation.outlines = presentation_outlines.model_dump()
         presentation.title = get_presentation_title_from_outlines(presentation_outlines)
+
+        if rag_service:
+            await rag_service.cleanup()
 
         sql_session.add(presentation)
         await sql_session.commit()

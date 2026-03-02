@@ -6,11 +6,13 @@ services:
       dockerfile: Dockerfile
     ports:
       # You can replace 5000 with any other port number of your choice to run Presenton on a different port number.
-      - "5000:80"
+      - "5001:80"
       # Required for Codex OAuth callback (OpenAI redirects browser directly to localhost:1455)
       - "1455:1455"
     volumes:
       - ./app_data:/app_data
+      # Persist ChromaDB icon index across rebuilds (avoids 30+ min re-indexing on every docker build)
+      - ./app_data/chroma:/app/servers/fastapi/chroma
     environment:
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
@@ -55,6 +57,7 @@ services:
       - "1455:1455"
     volumes:
       - ./app_data:/app_data
+      - ./app_data/chroma:/app/servers/fastapi/chroma
     environment:
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
@@ -91,6 +94,7 @@ services:
     volumes:
       - .:/app
       - ./app_data:/app_data
+      - ./app_data/chroma:/app/servers/fastapi/chroma
     environment:
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}
@@ -134,6 +138,7 @@ services:
     volumes:
       - .:/app
       - ./app_data:/app_data
+      - ./app_data/chroma:/app/servers/fastapi/chroma
     environment:
       - CAN_CHANGE_KEYS=${CAN_CHANGE_KEYS}
       - LLM=${LLM}

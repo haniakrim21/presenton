@@ -1,0 +1,8 @@
+<svg viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg">
+  <!-- Pulse icon -->
+  <path d="M4 20 L10 20 L13 10 L17 30 L21 14 L24 20 L30 20" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- NabdAI text -->
+  <text x="36" y="26" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="-0.5">
+    <tspan fill="#FFFFFF">Nabd</tspan><tspan fill="rgba(255,255,255,0.75)">AI</tspan>
+  </text>
+</svg>

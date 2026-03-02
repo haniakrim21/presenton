@@ -15,10 +15,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { OverlayLoader } from "@/components/ui/overlay-loader";
-import { PresentationGenerationApi } from "../../services/api/presentation-generation";
-import { setPresentationId } from "@/store/slices/presentationGeneration";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { useRouter, usePathname } from "next/navigation";
 import { RootState } from "@/store/store";
 import { Button } from "@/components/ui/button";
@@ -31,13 +28,6 @@ import Header from "@/app/(presentation-generator)/dashboard/components/Header";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 
 // Types
-interface LoadingState {
-  message: string;
-  show: boolean;
-  duration: number;
-  progress: boolean;
-}
-
 interface TextContents {
   [key: string]: string;
 }
@@ -49,7 +39,6 @@ interface FileItem {
 
 const DocumentsPreviewPage: React.FC = () => {
   // Hooks
-  const dispatch = useDispatch();
   const router = useRouter();
   const pathname = usePathname();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -66,12 +55,6 @@ const DocumentsPreviewPage: React.FC = () => {
     []
   );
   const [isOpen, setIsOpen] = useState(true);
-  const [showLoading, setShowLoading] = useState<LoadingState>({
-    message: "",
-    show: false,
-    duration: 10,
-    progress: false,
-  });
 
   // Memoized computed values
   const fileItems: FileItem[] = useMemo(() => {
@@ -134,56 +117,9 @@ const DocumentsPreviewPage: React.FC = () => {
     }
   };
 
-  const handleCreatePresentation = async () => {
-    try {
-      setShowLoading({
-        message: "Generating presentation outline...",
-        show: true,
-        duration: 40,
-        progress: true,
-      });
-
-      const documentPaths = fileItems.map(
-        (fileItem: FileItem) => fileItem.file_path
-      );
-      trackEvent(MixpanelEvent.DocumentsPreview_Create_Presentation_API_Call);
-       const createResponse = await PresentationGenerationApi.createPresentation(
-        {
-          content: config?.prompt ?? "",
-          n_slides: config?.slides ? parseInt(config.slides) : null,
-          file_paths: documentPaths,
-          language: config?.language ?? "",
-          tone: config?.tone,
-          verbosity: config?.verbosity,
-          instructions: config?.instructions || null,
-          include_table_of_contents: !!config?.includeTableOfContents,
-          include_title_slide: !!config?.includeTitleSlide,
-          web_search: !!config?.webSearch,
-        }
-      );
-
-      dispatch(setPresentationId(createResponse.id));
-      trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/outline" });
-      router.replace("/outline");
-    } catch (error: any) {
-      console.error("Error in radar presentation creation:", error);
-      toast.error("Error", {
-        description: error.message || "Error in radar presentation creation.",
-      });
-      setShowLoading({
-        message: "Error in radar presentation creation.",
-        show: true,
-        duration: 10,
-        progress: false,
-      });
-    } finally {
-      setShowLoading({
-        message: "",
-        show: false,
-        duration: 10,
-        progress: false,
-      });
-    }
+  const handleCreatePresentation = () => {
+    trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/template" });
+    router.push("/template");
   };
 
   // Effects
@@ -263,12 +199,6 @@ const DocumentsPreviewPage: React.FC = () => {
 
   return (
     <div className={`bg-white/90 min-h-screen flex flex-col w-full`}>
-      <OverlayLoader
-        show={showLoading.show}
-        text={showLoading.message}
-        showProgress={showLoading.progress}
-        duration={showLoading.duration}
-      />
       <Header />
       <div className="flex mt-6 gap-4 font-instrument_sans">
         {!isOpen && (

@@ -20,6 +20,7 @@ import {
 } from "../hooks";
 import { PresentationPageProps } from "../types";
 import LoadingState from "./LoadingState";
+import { applyTheme } from "../../theme/theme-colors";
 
 import { useFontLoader } from "../../hooks/useFontLoader";
 import { usePresentationUndoRedo } from "../hooks/PresentationUndoRedo";
@@ -37,6 +38,10 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
 
   const { presentationData, isStreaming } = useSelector(
     (state: RootState) => state.presentationGeneration
+  );
+
+  const selectedTheme = useSelector(
+    (state: RootState) => state.pptGenUpload.selectedTheme
   );
 
   // Auto-save functionality
@@ -76,6 +81,13 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   );
 
   usePresentationUndoRedo();
+
+  // Apply theme CSS variables once slides are rendered
+  useEffect(() => {
+    if (!loading && presentationData?.slides?.length) {
+      applyTheme(selectedTheme);
+    }
+  }, [loading, selectedTheme, presentationData?.slides?.length]);
 
   const onSlideChange = (newSlide: number) => {
     handleSlideChange(newSlide, presentationData);
@@ -132,6 +144,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
       <Help />
 
       <div
+        id="presentation-slides-wrapper"
         style={{
           background: "#c8c7c9",
         }}
@@ -147,7 +160,6 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
 
         <div className="flex-1 h-[calc(100vh-100px)] overflow-y-auto">
           <div
-            id="presentation-slides-wrapper"
             className="mx-auto flex flex-col items-center overflow-hidden justify-center p-2 sm:p-6 pt-0"
           >
             {!presentationData ||

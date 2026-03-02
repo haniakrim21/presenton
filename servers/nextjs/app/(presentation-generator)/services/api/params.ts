@@ -11,11 +11,10 @@ export interface ImageGenerate {
   prompt: string;
 }
 export interface IconSearch {
- 
-
   query: string;
-
   limit: number;
+  style?: string;
+  icon_set?: string;
 }
 
 export interface PreviousGeneratedImagesResponse {

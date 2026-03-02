@@ -6,7 +6,7 @@ import {
   Loader2,
   Redo2,
   Undo2,
-
+  Save,
 } from "lucide-react";
 import React, { useState } from "react";
 import Wrapper from "@/components/Wrapper";
@@ -37,6 +37,7 @@ import { usePresentationUndoRedo } from "../hooks/PresentationUndoRedo";
 import ToolTip from "@/components/ToolTip";
 import { clearPresentationData } from "@/store/slices/presentationGeneration";
 import { clearHistory } from "@/store/slices/undoRedoSlice";
+import ThemePicker from "./ThemePicker";
 
 const Header = ({
   presentation_id,
@@ -56,6 +57,10 @@ const Header = ({
     (state: RootState) => state.presentationGeneration
   );
 
+  const selectedTheme = useSelector(
+    (state: RootState) => state.pptGenUpload.selectedTheme
+  );
+
   const { onUndo, onRedo, canUndo, canRedo } = usePresentationUndoRedo();
 
   const get_presentation_pptx_model = async (id: string): Promise<PptxPresentationModel> => {
@@ -72,7 +77,7 @@ const Header = ({
       setShowLoader(true);
       // Save the presentation data before exporting
       trackEvent(MixpanelEvent.Header_UpdatePresentationContent_API_Call);
-      await PresentationGenerationApi.updatePresentationContent(presentationData);
+      await PresentationGenerationApi.updatePresentationContent({ ...presentationData, theme: selectedTheme });
       trackEvent(MixpanelEvent.Header_GetPptxModel_API_Call);
       const pptx_model = await get_presentation_pptx_model(presentation_id);
       if (!pptx_model) {
@@ -106,7 +111,7 @@ const Header = ({
       setShowLoader(true);
       // Save the presentation data before exporting
       trackEvent(MixpanelEvent.Header_UpdatePresentationContent_API_Call);
-      await PresentationGenerationApi.updatePresentationContent(presentationData);
+      await PresentationGenerationApi.updatePresentationContent({ ...presentationData, theme: selectedTheme });
 
       trackEvent(MixpanelEvent.Header_ExportAsPDF_API_Call);
       const response = await fetch('/api/export-as-pdf', {
@@ -135,6 +140,22 @@ const Header = ({
       setShowLoader(false);
     }
   };
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (isStreaming || !presentationData) return;
+    try {
+      setIsSaving(true);
+      await PresentationGenerationApi.updatePresentationContent({ ...presentationData, theme: selectedTheme });
+      toast.success("Presentation saved!");
+    } catch (error) {
+      console.error("Save failed:", error);
+      toast.error("Failed to save presentation. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleReGenerate = () => {
     dispatch(clearPresentationData());
     dispatch(clearHistory())
@@ -211,6 +232,23 @@ const Header = ({
 
       </div>
 
+      <ThemePicker />
+
+      {/* Save Button */}
+      <ToolTip content="Save">
+        <button
+          disabled={isStreaming || !presentationData || isSaving}
+          className="text-white disabled:opacity-50"
+          onClick={handleSave}
+        >
+          {isSaving ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            <Save className="w-6 h-6" />
+          )}
+        </button>
+      </ToolTip>
+
       {/* Present Button */}
       <Button
         onClick={() => {
@@ -266,9 +304,9 @@ const Header = ({
         <Wrapper className="flex items-center justify-between py-1">
           <Link href="/dashboard" className="min-w-[162px]">
             <img
-              className="h-16"
-              src="/logo-white.png"
-              alt="Presentation logo"
+              className="h-10"
+              src="/nabds-logo-white.svg"
+              alt="NAbds AI"
             />
           </Link>
 

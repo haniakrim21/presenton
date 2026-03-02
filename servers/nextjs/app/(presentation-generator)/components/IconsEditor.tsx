@@ -13,17 +13,34 @@ import { Button } from "@/components/ui/button";
 import { PresentationGenerationApi } from "../services/api/presentation-generation";
 import { getStaticFileUrl } from "../utils/others";
 import { toast } from "sonner";
+
 interface IconsEditorProps {
   icon_prompt?: string[] | null;
   onClose?: () => void;
   onIconChange?: (newIconUrl: string, query?: string) => void;
 }
 
+const STYLE_OPTIONS = [
+  { label: "Bold", value: "bold" },
+  { label: "Thin", value: "thin" },
+  { label: "Light", value: "light" },
+  { label: "Regular", value: "regular" },
+  { label: "Fill", value: "fill" },
+  { label: "Duotone", value: "duotone" },
+];
+
+const ICON_SET_OPTIONS = [
+  { label: "All", value: "" },
+  { label: "Phosphor", value: "phosphor" },
+  { label: "Lucide", value: "lucide" },
+  { label: "Heroicons", value: "heroicons" },
+  { label: "Material", value: "material" },
+];
+
 const IconsEditor = ({
   icon_prompt,
   onClose,
   onIconChange,
-
 }: IconsEditorProps) => {
   // State management
   const [icons, setIcons] = useState<string[]>([]);
@@ -32,6 +49,8 @@ const IconsEditor = ({
   );
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(true);
+  const [selectedStyle, setSelectedStyle] = useState<string>("bold");
+  const [selectedSet, setSelectedSet] = useState<string>("");
 
   // Search for icons when component opens
   useEffect(() => {
@@ -40,8 +59,13 @@ const IconsEditor = ({
     }
   }, []);
 
+  // Re-trigger search when style or icon set filter changes
+  useEffect(() => {
+    handleIconSearch();
+  }, [selectedStyle, selectedSet]);
+
   /**
-   * Searches for icons based on the current query
+   * Searches for icons based on the current query and active filters
    */
   const handleIconSearch = async () => {
     setLoading(true);
@@ -51,6 +75,8 @@ const IconsEditor = ({
       const data = await PresentationGenerationApi.searchIcons({
         query,
         limit: 40,
+        style: selectedStyle,
+        icon_set: selectedSet || undefined,
       });
       setIcons(data);
     } catch (error: any) {
@@ -66,9 +92,8 @@ const IconsEditor = ({
    * Handles icon selection and calls the parent callback
    */
   const handleIconChange = (newIcon: string) => {
-
     if (onIconChange) {
-      onIconChange(newIcon, searchQuery || icon_prompt?.[0] || '');
+      onIconChange(newIcon, searchQuery || icon_prompt?.[0] || "");
     }
     handleClose();
   };
@@ -81,12 +106,9 @@ const IconsEditor = ({
       onClose?.();
     }, 300); // Match the Sheet animation duration
   };
-  
 
   return (
     <div className="icons-editor-container">
-
-
       <Sheet open={isOpen} onOpenChange={() => handleClose()}>
         <SheetContent
           side="right"
@@ -98,7 +120,7 @@ const IconsEditor = ({
             <SheetTitle>Choose Icon</SheetTitle>
           </SheetHeader>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 space-y-3">
             {/* Search Form */}
             <form
               onSubmit={(e) => {
@@ -127,8 +149,74 @@ const IconsEditor = ({
               </Button>
             </form>
 
+            {/* Style Pills */}
+            <div className="flex flex-wrap gap-1.5">
+              {STYLE_OPTIONS.map((opt) => {
+                const isActive = selectedStyle === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedStyle(opt.value);
+                    }}
+                    className="px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: "var(--primary-color, #51459e)",
+                            borderColor: "var(--primary-color, #51459e)",
+                            color: "#fff",
+                          }
+                        : {
+                            backgroundColor: "transparent",
+                            borderColor: "#d1d5db",
+                            color: "#6b7280",
+                          }
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Icon Set Pills */}
+            <div className="flex flex-wrap gap-1.5">
+              {ICON_SET_OPTIONS.map((opt) => {
+                const isActive = selectedSet === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSet(opt.value);
+                    }}
+                    className="px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: "var(--primary-color, #51459e)",
+                            borderColor: "var(--primary-color, #51459e)",
+                            color: "#fff",
+                          }
+                        : {
+                            backgroundColor: "transparent",
+                            borderColor: "#d1d5db",
+                            color: "#6b7280",
+                          }
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Icons Grid */}
-            <div className="max-h-[80vh] hide-scrollbar overflow-y-auto p-1">
+            <div className="max-h-[70vh] hide-scrollbar overflow-y-auto p-1">
               {loading ? (
                 <div className="grid grid-cols-4 gap-4">
                   {Array.from({ length: 40 }).map((_, index) => (

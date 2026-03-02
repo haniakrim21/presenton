@@ -205,6 +205,8 @@ export function ConfigurationSelects({
     includeTableOfContents: config.includeTableOfContents,
     includeTitleSlide: config.includeTitleSlide,
     webSearch: config.webSearch,
+    exportFormat: config.exportFormat ?? ("pptx" as "pptx" | "pdf"),
+    slidesMarkdown: config.slidesMarkdown ?? null,
   });
 
   const handleOpenAdvancedChange = (open: boolean) => {
@@ -216,6 +218,8 @@ export function ConfigurationSelects({
         includeTableOfContents: config.includeTableOfContents,
         includeTitleSlide: config.includeTitleSlide,
         webSearch: config.webSearch,
+        exportFormat: config.exportFormat ?? "pptx",
+        slidesMarkdown: config.slidesMarkdown ?? null,
       });
     }
     setOpenAdvanced(open);
@@ -228,6 +232,8 @@ export function ConfigurationSelects({
     onConfigChange("includeTableOfContents", advancedDraft.includeTableOfContents);
     onConfigChange("includeTitleSlide", advancedDraft.includeTitleSlide);
     onConfigChange("webSearch", advancedDraft.webSearch);
+    onConfigChange("exportFormat", advancedDraft.exportFormat);
+    onConfigChange("slidesMarkdown", advancedDraft.slidesMarkdown);
     setOpenAdvanced(false);
   };
 
@@ -350,6 +356,53 @@ export function ConfigurationSelects({
                 placeholder="Example: Focus on enterprise buyers, emphasize ROI and security compliance. Keep slides data-driven, avoid jargon, and include a short call-to-action on the final slide."
                 className="py-2 px-3 border-2 font-medium text-sm min-h-[100px] max-h-[200px] border-blue-200 focus-visible:ring-offset-0 focus-visible:ring-blue-300"
               />
+            </div>
+
+            {/* Export Format */}
+            <div className="w-full sm:col-span-2 flex flex-col gap-2">
+              <label className="text-sm font-semibold text-gray-700">Export Format</label>
+              <p className="text-xs text-gray-500">Choose the file format for your downloaded presentation.</p>
+              <div className="flex gap-2">
+                {(["pptx", "pdf"] as const).map((fmt) => (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => setAdvancedDraft((prev) => ({ ...prev, exportFormat: fmt }))}
+                    className={cn(
+                      "px-4 py-1.5 rounded-md text-sm font-medium border transition-colors",
+                      advancedDraft.exportFormat === fmt
+                        ? "bg-[#5141e5] text-white border-[#5141e5]"
+                        : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                    )}
+                  >
+                    {fmt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Slide Content */}
+            <div className="w-full sm:col-span-2 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Custom Slide Content</label>
+                  <p className="text-xs text-gray-500 mt-0.5">Provide your own markdown content. Separate slides with <code className="bg-gray-100 px-1 rounded">---</code> on its own line.</p>
+                </div>
+                <Switch
+                  checked={advancedDraft.slidesMarkdown !== null}
+                  onCheckedChange={(checked) =>
+                    setAdvancedDraft((prev) => ({ ...prev, slidesMarkdown: checked ? "" : null }))
+                  }
+                />
+              </div>
+              {advancedDraft.slidesMarkdown !== null && (
+                <Textarea
+                  value={advancedDraft.slidesMarkdown}
+                  onChange={(e) => setAdvancedDraft((prev) => ({ ...prev, slidesMarkdown: e.target.value }))}
+                  placeholder={"# Slide 1 Title\nContent for slide 1\n---\n# Slide 2 Title\nContent for slide 2"}
+                  className="py-2 px-3 border-2 font-mono text-sm min-h-[120px] max-h-[250px] border-blue-200 focus-visible:ring-offset-0 focus-visible:ring-blue-300"
+                />
+              )}
             </div>
           </div>
 

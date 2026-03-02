@@ -34,6 +34,9 @@ class GeneratePresentationRequest(BaseModel):
     files: Optional[List[str]] = Field(
         default=None, description="Files to use for the presentation"
     )
+    kb_document_ids: Optional[List[str]] = Field(
+        default=None, description="Knowledge base document IDs to use as context"
+    )
     export_as: Literal["pptx", "pdf"] = Field(
         default="pptx", description="Export format"
     )

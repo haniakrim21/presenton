@@ -1,0 +1,14 @@
+<svg viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ng" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <!-- Pulse icon -->
+  <path d="M4 20 L10 20 L13 10 L17 30 L21 14 L24 20 L30 20" fill="none" stroke="url(#ng)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- NabdAI text -->
+  <text x="36" y="26" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="-0.5">
+    <tspan fill="#1E1B4B">Nabd</tspan><tspan fill="#4F46E5">AI</tspan>
+  </text>
+</svg>

@@ -3,15 +3,17 @@ export interface UploadedFile {
   file: File;
   size: string;
 }
-export enum ThemeType {
-  Light = "light",
-  Dark = "dark",
-  Custom = "custom",
-  Faint_Yellow = "faint_yellow",
-  Royal_Blue = "royal_blue",
-  Light_Red = "light_red",
-  Dark_Pink = "dark_pink",
-}
+export const ThemeType = {
+  Light: "light",
+  Dark: "dark",
+  Custom: "custom",
+  Faint_Yellow: "faint_yellow",
+  Royal_Blue: "royal_blue",
+  Light_Red: "light_red",
+  Dark_Pink: "dark_pink",
+} as const;
+
+export type ThemeType = (typeof ThemeType)[keyof typeof ThemeType] | string;
 
 export enum LanguageType {
   // Major World Languages
@@ -129,6 +131,9 @@ export interface PresentationConfig {
   includeTableOfContents: boolean;
   includeTitleSlide: boolean;
   webSearch: boolean;
+  kbDocumentIds: string[];
+  exportFormat: "pptx" | "pdf";
+  slidesMarkdown: string | null;
 }
 
 export enum ToneType {

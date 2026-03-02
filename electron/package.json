@@ -1,9 +1,9 @@
 {
   "name": "presenton",
-  "productName": "Presenton Open Source",
+  "productName": "NAbds AI",
   "version": "0.6.0-beta",
   "main": "app_dist/main.js",
-  "description": "Open-Source AI Presentation Generator",
+  "description": "AI Presentation Generator",
   "homepage": "https://presenton.ai",
   "repository": "https://github.com/presenton/presenton",
    "keywords": [
@@ -11,7 +11,7 @@
     "electron-builder",
     "Microsoft Store",
     "AI presentation generator",
-    "open-source",
+    "ai-presentations",
     "presentation software",
     "tailwindcss",
     "typescript",
@@ -25,10 +25,10 @@
     "automation"
   ],
   "scripts": {
-    "start": "electron .",
+    "start": "./start.sh",
     "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps",
-    "dev": "rm -rf app_dist && tsc && electron .",
+    "dev": "rm -rf app_dist && tsc && ./start.sh",
     "setup:env": "npm install && cd servers/fastapi && uv sync && cd ../../servers/nextjs && npm install",
     "install:pyinstaller": "cd servers/fastapi && echo 'pyinstaller already in dependencies'",
     "build:ts": "rm -rf app_dist && tsc",

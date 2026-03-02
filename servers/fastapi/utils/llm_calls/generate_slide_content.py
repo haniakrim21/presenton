@@ -64,7 +64,9 @@ def get_system_prompt(
     """
 
 
-def get_user_prompt(outline: str, language: str):
+def get_user_prompt(
+    outline: str, language: str, additional_context: Optional[str] = None
+):
     return f"""
         ## Current Date and Time
         {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -77,6 +79,9 @@ def get_user_prompt(outline: str, language: str):
 
         ## Slide Outline
         {outline}
+
+        {"## Relevant Reference Information" if additional_context else ""}
+        {additional_context or ""}
     """
 
 
@@ -86,6 +91,7 @@ def get_messages(
     tone: Optional[str] = None,
     verbosity: Optional[str] = None,
     instructions: Optional[str] = None,
+    additional_context: Optional[str] = None,
 ):
 
     return [
@@ -93,7 +99,7 @@ def get_messages(
             content=get_system_prompt(tone, verbosity, instructions),
         ),
         LLMUserMessage(
-            content=get_user_prompt(outline, language),
+            content=get_user_prompt(outline, language, additional_context),
         ),
     ]
 
@@ -105,6 +111,7 @@ async def get_slide_content_from_type_and_outline(
     tone: Optional[str] = None,
     verbosity: Optional[str] = None,
     instructions: Optional[str] = None,
+    additional_context: Optional[str] = None,
 ):
     client = LLMClient()
     model = get_model()
@@ -131,6 +138,7 @@ async def get_slide_content_from_type_and_outline(
         tone,
         verbosity,
         instructions,
+        additional_context,
     )
     print(
         f"get_slide_content_from_type_and_outline: model={model} outline_len={len(outline.content or '')} language={language}"

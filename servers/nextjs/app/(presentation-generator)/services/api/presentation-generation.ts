@@ -53,6 +53,7 @@ export class PresentationGenerationApi {
     content,
     n_slides,
     file_paths,
+    kb_document_ids,
     language,
     tone,
     verbosity,
@@ -60,11 +61,14 @@ export class PresentationGenerationApi {
     include_table_of_contents,
     include_title_slide,
     web_search,
-    
+    export_as,
+    slides_markdown,
+
   }: {
     content: string;
     n_slides: number | null;
     file_paths?: string[];
+    kb_document_ids?: string[];
     language: string | null;
     tone?: string | null;
     verbosity?: string | null;
@@ -72,6 +76,8 @@ export class PresentationGenerationApi {
     include_table_of_contents?: boolean;
     include_title_slide?: boolean;
     web_search?: boolean;
+    export_as?: "pptx" | "pdf";
+    slides_markdown?: string[] | null;
   }) {
     try {
       const response = await fetch(
@@ -83,6 +89,7 @@ export class PresentationGenerationApi {
             content,
             n_slides,
             file_paths,
+            kb_document_ids,
             language,
             tone,
             verbosity,
@@ -90,6 +97,8 @@ export class PresentationGenerationApi {
             include_table_of_contents,
             include_title_slide,
             web_search,
+            export_as: export_as ?? "pptx",
+            slides_markdown: slides_markdown ?? null,
           }),
           cache: "no-cache",
         }
@@ -205,8 +214,15 @@ export class PresentationGenerationApi {
   
   static async searchIcons(iconSearch: IconSearch) {
     try {
+      const params = new URLSearchParams({
+        query: iconSearch.query,
+        limit: String(iconSearch.limit),
+      });
+      if (iconSearch.style) params.set("style", iconSearch.style);
+      if (iconSearch.icon_set) params.set("icon_set", iconSearch.icon_set);
+
       const response = await fetch(
-        `/api/v1/ppt/icons/search?query=${iconSearch.query}&limit=${iconSearch.limit}`,
+        `/api/v1/ppt/icons/search?${params.toString()}`,
         {
           method: "GET",
           headers: getHeader(),

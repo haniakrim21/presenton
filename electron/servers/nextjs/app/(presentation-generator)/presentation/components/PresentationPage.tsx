@@ -47,7 +47,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   );
 
   // Auto-save functionality
-  const { isSaving } = useAutoSave({
+  const { isSaving, saveNow } = useAutoSave({
     debounceMs: 2000,
     enabled: !!presentationData && !isStreaming,
   });
@@ -135,7 +135,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
         {isSaving && <Loader2 className="w-6 h-6 animate-spin text-blue-500" />}
       </div>
 
-      <Header presentation_id={presentation_id} currentSlide={selectedSlide} />
+      <Header presentation_id={presentation_id} currentSlide={selectedSlide} onSave={saveNow} isSaving={isSaving} />
       <Help />
 
       <div

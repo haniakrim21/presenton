@@ -9,6 +9,37 @@ from utils.dict_utils import (
     has_more_than_n_keys,
 )
 
+def convert_prefix_items_to_items(schema: dict) -> dict:
+    """Recursively convert prefixItems (tuple schemas from Zod) to items for OpenAI compatibility."""
+    if not isinstance(schema, dict):
+        return schema
+
+    schema = deepcopy(schema)
+
+    def _convert(node: Any) -> Any:
+        if isinstance(node, dict):
+            # Convert prefixItems to items
+            if "prefixItems" in node and "items" not in node:
+                prefix = node.pop("prefixItems")
+                if isinstance(prefix, list) and prefix:
+                    unique = []
+                    for s in prefix:
+                        if s not in unique:
+                            unique.append(s)
+                    node["items"] = unique[0] if len(unique) == 1 else {"anyOf": unique}
+
+            for key, value in node.items():
+                if isinstance(value, dict):
+                    _convert(value)
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            _convert(item)
+        return node
+
+    return _convert(schema)
+
+
 supported_string_formats = [
     "date-time",
     "time",
@@ -184,6 +215,24 @@ def ensure_strict_json_schema(
         json_schema["items"] = ensure_strict_json_schema(
             items, path=(*path, "items"), root=root
         )
+
+    # tuple arrays (Zod z.tuple() produces prefixItems instead of items)
+    # OpenAI requires 'items' for arrays, so convert prefixItems to items
+    prefix_items = json_schema.get("prefixItems")
+    if isinstance(prefix_items, list) and "items" not in json_schema:
+        unique_schemas = []
+        for schema in prefix_items:
+            if schema not in unique_schemas:
+                unique_schemas.append(schema)
+        if len(unique_schemas) == 1:
+            json_schema["items"] = ensure_strict_json_schema(
+                unique_schemas[0], path=(*path, "items"), root=root
+            )
+        else:
+            json_schema["items"] = ensure_strict_json_schema(
+                {"anyOf": unique_schemas}, path=(*path, "items"), root=root
+            )
+        del json_schema["prefixItems"]
 
     # unions
     any_of = json_schema.get("anyOf")

@@ -11,18 +11,21 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import SlideScale from "../../components/PresentationRender";
+import { THEME_COLOR_MAP } from "@/app/(presentation-generator)/theme/theme-colors";
 
 export const PresentationCard = ({
   id,
   title,
   created_at,
   slide,
+  theme,
   onDeleted
 }: {
   id: string;
   title: string;
   created_at: string;
   slide: any;
+  theme?: string;
   onDeleted?: (presentationId: string) => void;
 }) => {
   const router = useRouter();
@@ -86,9 +89,7 @@ export const PresentationCard = ({
         </div>
 
         <div className=" slide-box relative overflow-hidden border aspect-video"
-          style={{
-
-          }}
+          style={theme && THEME_COLOR_MAP[theme] ? (THEME_COLOR_MAP[theme] as React.CSSProperties) : {}}
         >
           <div className="absolute bg-transparent z-40 top-0 left-0 w-full h-full" />
           <div className="transform scale-[0.2] flex justify-center items-center origin-top-left  w-[500%] h-[500%]">
