@@ -39,7 +39,9 @@ COPY servers/nextjs/package.json servers/nextjs/package-lock.json ./
 RUN npm install
 
 
-# Cache bust – forces rebuild of all app COPY layers
+# Cache bust – change this value to force Docker to re-run all subsequent
+# COPY/RUN layers, bypassing BuildKit's layer cache. Useful when remote
+# builders (e.g. Sliplane) serve a stale cached image.
 ARG CACHE_BUST=20260302
 
 # Copy Next.js app
@@ -53,6 +55,8 @@ WORKDIR /app
 
 # Copy FastAPI
 COPY servers/fastapi/ ./servers/fastapi/
+# package.json must be copied alongside start.js so Node.js recognises
+# it as an ES module ("type": "module") and can resolve import statements.
 COPY start.js package.json LICENSE NOTICE ./
 
 # Copy nginx configuration
