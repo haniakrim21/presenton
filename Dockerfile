@@ -53,7 +53,7 @@ WORKDIR /app
 
 # Copy FastAPI
 COPY servers/fastapi/ ./servers/fastapi/
-COPY start.js LICENSE NOTICE ./
+COPY start.js package.json LICENSE NOTICE ./
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
