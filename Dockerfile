@@ -42,7 +42,7 @@ RUN npm install
 # Cache bust – change this value to force Docker to re-run all subsequent
 # COPY/RUN layers, bypassing BuildKit's layer cache. Useful when remote
 # builders (e.g. Sliplane) serve a stale cached image.
-ARG CACHE_BUST=20260302
+ARG CACHE_BUST=20260302b
 
 # Copy Next.js app
 COPY servers/nextjs/ /app/servers/nextjs/
