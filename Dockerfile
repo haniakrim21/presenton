@@ -39,6 +39,9 @@ COPY servers/nextjs/package.json servers/nextjs/package-lock.json ./
 RUN npm install
 
 
+# Cache bust – forces rebuild of all app COPY layers
+ARG CACHE_BUST=20260302
+
 # Copy Next.js app
 COPY servers/nextjs/ /app/servers/nextjs/
 
